@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<title>folio-local</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+  table { border-collapse: collapse; width: 100%; }
+  td, th { border: 1px solid #ccc; padding: .35rem .6rem; text-align: left; }
+  .pos { color: #0a7d28; } .neg { color: #c0392b; }
+  .cards { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0; }
+  .card { border: 1px solid #ccc; border-radius: 8px; padding: .8rem 1.2rem; }
+  .card b { display: block; font-size: 1.4rem; }
+</style>
+</head>
+<body>
+<h1>folio-local</h1>
+<p>Самохостинговий портфельний трекер. Дані — тільки у вашій SQLite.</p>
+
+<div class="cards" id="cards"></div>
+<canvas id="chart" height="90"></canvas>
+
+<h2>Позиції</h2>
+<table id="positions"></table>
+
+<script>
+async function load() {
+  const acc = await (await fetch('/api/accounts')).json();
+  if (!acc.length) {
+    document.getElementById('cards').innerHTML = '<p>Немає рахунків. Створіть через POST /api/accounts.</p>';
+    return;
+  }
+  const accId = acc[0].id;
+  const p = await (await fetch(`/api/portfolio?account_id=${accId}`)).json();
+  const xirr = p.xirr == null ? '—' : (100 * p.xirr).toFixed(2) + '%';
+  document.getElementById('cards').innerHTML =
+    `<div class="card">Вартість<b>${p.total.toFixed(2)} ${p.currency}</b></div>` +
+    `<div class="card">P/L<b class="${p.pnl >= 0 ? 'pos' : 'neg'}">${p.pnl.toFixed(2)}</b></div>` +
+    `<div class="card">XIRR<b>${xirr}</b></div>` +
+    `<div class="card">Кеш<b>${p.cash.toFixed(2)}</b></div>`;
+
+  const rows = Object.entries(p.positions || {}).map(([t, v]) =>
+    `<tr><td>${t}</td><td>${v.toFixed(2)} ${p.currency}</td></tr>`).join('');
+  document.getElementById('positions').innerHTML =
+    `<tr><th>Тікер</th><th>Вартість</th></tr>` + (rows || '<tr><td colspan=2>порожньо</td></tr>');
+
+  const h = await (await fetch(`/api/portfolio/history?account_id=${accId}&start=2000-01-01&end=2099-01-01`)).json();
+  new Chart(document.getElementById('chart'), {
+    type: 'line',
+    data: {
+      labels: h.points.map(pt => pt.date),
+      datasets: [{ label: 'Вартість портфеля, ' + h.currency,
+                   data: h.points.map(pt => pt.total), fill: false }]
+    }
+  });
+}
+load();
+</script>
+</body>
+</html>
