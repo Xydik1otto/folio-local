@@ -1,0 +1,56 @@
+name: android-build
+
+on:
+  push:
+    branches: [master, mobile/android-ios]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install web deps
+        run: npm ci
+      - name: Sync Capacitor web assets
+        run: npx cap sync android
+      - name: Build debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+      - name: Build release APK (unsigned)
+        run: |
+          cd android
+          ./gradlew assembleRelease --no-daemon
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: folio-local-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+      - name: Upload release APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: folio-local-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          retention-days: 30
+      - name: Attach APKs to Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/release/*.apk
