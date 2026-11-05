@@ -1,7 +1,10 @@
 # FastAPI application: REST API + static frontend for folio-local.
 from __future__ import annotations
 
+import csv
 import datetime as dt
+import io
+import json
 import os
 from pathlib import Path
 
@@ -406,6 +409,53 @@ def warnings_panel(account_id: int, as_of: str | None = None):
         return warnings_mod.collect_warnings(conn, account_id, as_of)
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+@app.get("/api/export")
+def export_all(account_id: int, format: str = "json"):
+    """One-click експорт усіх даних рахунку: JSON (усе) або CSV (транзакції)."""
+    conn = get_conn()
+    if not conn.execute("SELECT 1 FROM accounts WHERE id = ?",
+                        (account_id,)).fetchone():
+        raise HTTPException(404, "account not found")
+    account = dict(conn.execute(
+        "SELECT * FROM accounts WHERE id = ?", (account_id,)).fetchone())
+    txs = [dict(r) for r in account_transactions(conn, account_id)]
+    assets = [dict(r) for r in conn.execute(
+        "SELECT DISTINCT a.* FROM assets a JOIN transactions t "
+        "ON t.asset_id = a.id WHERE t.account_id = ?", (account_id,))]
+    fx = [dict(r) for r in conn.execute("SELECT * FROM fx_rates ORDER BY date")]
+    prices = [dict(r) for r in conn.execute(
+        "SELECT DISTINCT p.* FROM price_snapshots p JOIN transactions t "
+        "ON t.asset_id IS NOT NULL AND p.ticker = "
+        "(SELECT ticker FROM assets WHERE id = t.asset_id) WHERE t.account_id = ?",
+        (account_id,))]
+    fmt = format.lower()
+    if fmt == "json":
+        payload = {"exported_at": dt.date.today().isoformat(),
+                   "app": "folio-local", "version": "1.0.0",
+                   "account": account, "transactions": txs,
+                   "assets": assets, "prices": prices, "fx_rates": fx}
+        return Response(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            media_type="application/json; charset=utf-8",
+            headers={"Content-Disposition":
+                     f'attachment; filename="folio-export-{account_id}.json"'})
+    if fmt == "csv":
+        buf = io.StringIO()
+        writer = csv.writer(buf)
+        writer.writerow(["date", "ticker", "action", "quantity", "price",
+                         "currency", "fees", "note"])  # canonical importer layout
+        for r in txs:
+            writer.writerow([r["date"], r.get("ticker") or "", r["type"],
+                             r["quantity"] if r["quantity"] is not None else "",
+                             r["price"] if r["price"] is not None else "",
+                             r["currency"], r["fees"], r.get("note") or ""])
+        return Response(
+            buf.getvalue(), media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition":
+                     f'attachment; filename="folio-transactions-{account_id}.csv"'})
+    raise HTTPException(400, "format must be 'json' or 'csv'")
 
 
 @app.get("/api/backup")

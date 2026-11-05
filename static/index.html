@@ -167,6 +167,12 @@ button.period.active { background: var(--accent); color: #fff; border-color: var
     Відновлення замінює поточну базу — попередньо зробіть бекап.</p>
 </fieldset>
 
+<fieldset>
+  <legend data-i18n="export_legend">Експорт даних (JSON/CSV)</legend>
+  <button class="ghost" onclick="exportData('json')" data-i18n="btn_export_json">JSON (усе)</button>
+  <button class="ghost" onclick="exportData('csv')" data-i18n="btn_export_csv">CSV (транзакції)</button>
+</fieldset>
+
 <h2 data-i18n="sec_backfill">Історія цін (backfill)</h2>
 <fieldset>
   <legend data-i18n="backfill_legend">Stooq: завантажити денні ціни за період</legend>
@@ -424,6 +430,12 @@ function taxExport(format) {
   const year = document.getElementById('taxYear').value;
   const method = document.getElementById('taxMethod').value;
   window.open(`/api/tax/export?account_id=${id}&year=${year}&method=${method}&format=${format}`, '_blank');
+}
+
+function exportData(format) {
+  const id = accId();
+  if (!id) { msg(t('pick_account')); return; }
+  window.open(`/api/export?account_id=${id}&format=${format}`, '_blank');
 }
 
 function downloadBackup() {
