@@ -186,6 +186,15 @@ Measured (Ryzen laptop, `python scripts/benchmark_native.py`, 3 runs):
 The native core is an option, not a requirement: without it everything
 runs on Python.
 
+## Mobile apps
+
+A mobile shell (Capacitor 6) lives on the
+[`mobile/android-ios`](https://github.com/bigpi/folio-local/tree/mobile/android-ios)
+branch: an Android APK from CI (sideload, Android 7.0→16) and an unsigned
+iOS build for AltStore/Sideloadly. The app connects to **your own server** —
+the URL is entered on first launch; away-from-home access via Tailscale.
+Details: [MOBILE.md](MOBILE.md).
+
 ## Roadmap
 
 - [x] MVP: math (XIRR/TWR/multi-currency), API, fixed CSV import, UI

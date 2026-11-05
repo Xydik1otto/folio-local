@@ -168,6 +168,14 @@ scripts/build_native.sh        # Windows: scripts\build_native.bat
 
 Нативне ядро — опція, а не вимога: без нього все працює на Python.
 
+## Мобільні застосунки / Mobile apps
+
+Мобільна оболонка (Capacitor 6) на гілці [`mobile/android-ios`](https://github.com/bigpi/folio-local/tree/mobile/android-ios):
+Android APK з CI (sideload, Android 7.0→16) та unsigned iOS-збірка для
+AltStore/Sideloadly. Застосунок підключається до **вашого сервера** —
+URL вводиться при першому запуску; доступ з-за меж дому через Tailscale.
+Деталі: [MOBILE.md](MOBILE.md).
+
 ## Roadmap
 
 - [x] MVP: математика (XIRR/TWR/мультивалютність), API, фіксований CSV-імпорт, UI
