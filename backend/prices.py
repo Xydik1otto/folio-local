@@ -59,10 +59,14 @@ def fetch_coingecko_price(coin_id: str) -> tuple[str, float] | None:
 def update_prices(conn, tickers: list[str]) -> dict[str, float | None]:
     """Fetch latest prices for tickers and store snapshots. Stooq first, then
     CoinGecko for anything that still has no snapshot today."""
-    from .db import get_asset, store_price
+    from .db import MANUAL_KINDS, get_asset, store_price
     results: dict[str, float | None] = {}
     for ticker in tickers:
         asset = get_asset(conn, ticker)
+        if asset and asset["kind"] in MANUAL_KINDS:
+            # bond / metal / real_estate: manual valuation only, no free feed
+            results[ticker] = None
+            continue
         quote = fetch_stooq_latest(ticker.lower())
         currency = "USD"
         if quote is None and asset and asset["kind"] == "crypto" and asset["name"]:
@@ -155,9 +159,13 @@ def backfill_prices(conn, ticker: str, start: str, end: str) -> dict:
     import datetime as _dt
     _dt.date.fromisoformat(start)
     _dt.date.fromisoformat(end)
-    from .db import get_asset, store_price
+    from .db import MANUAL_KINDS, get_asset, store_price
     ticker = ticker.upper()
     row = get_asset(conn, ticker)
+    if row and row["kind"] in MANUAL_KINDS:
+        return {"ticker": ticker, "start": start, "end": end, "stored": 0,
+                "error": f"{ticker} is a manual asset class "
+                         f"({row['kind']}); store price snapshots yourself"}
     if (row and row["kind"] == "crypto") or (row is None and ticker in KNOWN_COINS):
         return backfill_crypto(conn, ticker, start, end)
     try:

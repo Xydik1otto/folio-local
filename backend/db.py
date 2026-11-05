@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS assets (
     id        INTEGER PRIMARY KEY AUTOINCREMENT,
     ticker    TEXT NOT NULL UNIQUE,
     name      TEXT,
-    kind      TEXT NOT NULL DEFAULT 'stock' CHECK (kind IN ('stock','etf','crypto','cash')),
+    kind      TEXT NOT NULL DEFAULT 'stock'
+              CHECK (kind IN ('stock','etf','crypto','cash','bond','metal','real_estate')),
     currency  TEXT NOT NULL DEFAULT 'USD'
 );
 
@@ -54,11 +55,42 @@ CREATE TABLE IF NOT EXISTS fx_rates (
 # FX rate on/just before a transaction date: currency -> EUR.
 # EUR itself is 1.0 always.
 
+# Asset classes with no free automated price feed: the owner records valuations
+# manually via price snapshots (/api/prices). Auto-update skips them.
+MANUAL_KINDS = frozenset({"bond", "metal", "real_estate"})
+
+
+def _migrate_assets_kind_check(conn: sqlite3.Connection) -> None:
+    """One-time migration for DBs created before bond/metal/real_estate existed:
+    rebuild the assets table with the extended kind CHECK, preserving rows."""
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='assets'"
+    ).fetchone()
+    if row is None or "bond" in (row["sql"] or ""):
+        return  # fresh DB or already migrated
+    conn.executescript("""
+PRAGMA foreign_keys=OFF;
+CREATE TABLE assets_new (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticker    TEXT NOT NULL UNIQUE,
+    name      TEXT,
+    kind      TEXT NOT NULL DEFAULT 'stock'
+              CHECK (kind IN ('stock','etf','crypto','cash','bond','metal','real_estate')),
+    currency  TEXT NOT NULL DEFAULT 'USD'
+);
+INSERT INTO assets_new(id, ticker, name, kind, currency)
+    SELECT id, ticker, name, kind, currency FROM assets;
+DROP TABLE assets;
+ALTER TABLE assets_new RENAME TO assets;
+PRAGMA foreign_keys=ON;
+""")
+
 
 def connect(db_path: str | None = None) -> sqlite3.Connection:
     path = db_path or DB_PATH
     conn = sqlite3.connect(path)
     conn.row_factory = sqlite3.Row
+    _migrate_assets_kind_check(conn)
     conn.execute("PRAGMA foreign_keys = ON")
     conn.executescript(SCHEMA)
     return conn

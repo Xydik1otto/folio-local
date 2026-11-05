@@ -75,11 +75,14 @@ static/index.html  Chart.js, fetch до /api/*
 
 ### v1 — "щоденний драйвер"
 - Column-mapping UI для довільних CSV (брокерські експорти).
-- Історія цін:/backfill через Stooq діапазонами; парсинг крипто-транзакцій
-  з блокчейн-експлорерів.
-- Asset класи: bonds, metals, real estate (ручна оцінка).
-- Docker + docker-compose; бекапи SQLite (litestream).
-- Авторизація (single-user basic auth + HTTPS через reverse proxy).
+- Історія цін:/backfill через Stooq діапазонами; ✓ парсинг крипто-транзакцій
+  з блокчейн-експлорерів (blockchain.info rawaddr, `backend/crypto_explorer.py`).
+- ✓ Asset класи: bonds, metals, real estate (ручна оцінка) — kind CHECK
+  розширено, міграція схеми на connect, auto-update цін пропускає ці класи.
+- ✓ Deploy без Docker: `scripts/deploy-local.sh` (venv + pip + init_db +
+  uvicorn, systemd-friendly); Docker + docker-compose — пізніше.
+- ✓ Бекапи SQLite (`backend/backup.py`, `/api/backup`).
+- ✓ Авторизація (single-user basic auth + HTTPS через reverse proxy).
 
 ### v1.5 — "правильна аналітика глибше"
 - MWR vs TWR поруч, rolling returns, drawdown, allocation drift.

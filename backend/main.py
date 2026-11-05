@@ -1,11 +1,13 @@
 # FastAPI application: REST API + static frontend for folio-local.
 from __future__ import annotations
 
+import base64
 import csv
 import datetime as dt
 import io
 import json
 import os
+import secrets
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -13,7 +15,8 @@ from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import csv_import, fx as fxmod, portfolio, prices, report as report_mod
+from . import csv_import, crypto_explorer, fx as fxmod, portfolio, prices
+from . import report as report_mod
 from . import warnings as warnings_mod
 from . import backup as backup_mod
 from . import demo as demo_mod
@@ -23,6 +26,51 @@ app = FastAPI(title="folio-local", version="1.0.0",
               description="Self-hosted portfolio tracker with correct TWR/XIRR math")
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+
+# --- optional single-user HTTP Basic auth ------------------------------------
+# Disabled by default (local single-user use). Set BOTH FOLIO_AUTH_USER and
+# FOLIO_AUTH_PASSWORD to require Basic auth on every path except /api/health
+# (which acts as the load-balancer/uptime probe). HTTPS termination is the
+# reverse proxy's job — Basic auth credentials must never travel over plain
+# HTTP, see INSTALL.md.
+AUTH_EXEMPT_PATHS = {"/api/health"}
+AUTH_ENV_USER = "FOLIO_AUTH_USER"
+AUTH_ENV_PASSWORD = "FOLIO_AUTH_PASSWORD"
+
+
+def auth_enabled() -> bool:
+    return bool(os.environ.get(AUTH_ENV_USER) and os.environ.get(AUTH_ENV_PASSWORD))
+
+
+def check_basic_auth(request) -> bool:
+    """Validate the request's Basic auth header against the configured
+    single-user credentials. True also when auth is disabled."""
+    user = os.environ.get(AUTH_ENV_USER) or ""
+    password = os.environ.get(AUTH_ENV_PASSWORD) or ""
+    if not (user and password):
+        return True  # auth not configured -> open access (local default)
+    header = request.headers.get("Authorization", "")
+    if not header.startswith("Basic "):
+        return False
+    try:
+        decoded = base64.b64decode(header[len("Basic "):].strip()).decode("utf-8")
+    except Exception:
+        return False
+    req_user, _, req_pass = decoded.partition(":")
+    # compare_digest keeps timing constant for both fields
+    return (secrets.compare_digest(req_user, user)
+            and secrets.compare_digest(req_pass, password))
+
+
+@app.middleware("http")
+async def basic_auth_middleware(request, call_next):
+    if (request.url.path not in AUTH_EXEMPT_PATHS
+            and not check_basic_auth(request)):
+        return Response(
+            status_code=401,
+            headers={"WWW-Authenticate": 'Basic realm="folio-local"'},
+        )
+    return await call_next(request)
 
 
 def db_path() -> str:
@@ -52,6 +100,7 @@ class TransactionIn(BaseModel):
     amount: float | None = None
     fees: float = 0.0
     currency: str = "EUR"
+    kind: str | None = None  # explicit asset class for a new ticker
     note: str | None = None
 
 
@@ -78,6 +127,12 @@ class BackfillIn(BaseModel):
     ticker: str
     start: str
     end: str
+
+
+class CryptoExplorerIn(BaseModel):
+    account_id: int
+    address: str
+    ticker: str = "BTC"
 
 
 # --- API ---------------------------------------------------------------------
@@ -130,7 +185,10 @@ def add_transaction(body: TransactionIn):
             asset_id = asset["id"]
         else:
             t = body.ticker.upper()
-            if body.note == "crypto" or t in prices.KNOWN_COINS:
+            if body.kind in csv_import.KINDS:
+                kind, name = body.kind, (prices.KNOWN_COINS.get(t)
+                                         if body.kind == "crypto" else None)
+            elif body.note == "crypto" or t in prices.KNOWN_COINS:
                 kind, name = "crypto", prices.KNOWN_COINS.get(t)
             else:
                 kind, name = "stock", None
@@ -339,6 +397,39 @@ def import_mapped(body: ImportMappedIn):
     except csv_import.ImportRowError as e:
         raise HTTPException(400, str(e))
     return {"imported": n}
+
+
+@app.post("/api/import/crypto-explorer")
+def import_crypto_explorer(body: CryptoExplorerIn):
+    """Import BTC on-chain transactions of a wallet address from a public
+    blockchain explorer (blockchain.info rawaddr) into an account.
+    On-chain transfers are not market trades: price stays None and the
+    valuation comes from price snapshots (e.g. CoinGecko backfill)."""
+    conn = get_conn()
+    if not conn.execute("SELECT 1 FROM accounts WHERE id = ?",
+                        (body.account_id,)).fetchone():
+        raise HTTPException(404, "account not found")
+    try:
+        txs = crypto_explorer.fetch_and_parse(body.address, body.ticker)
+    except crypto_explorer.ExplorerError as e:
+        raise HTTPException(422, str(e))
+    ticker = body.ticker.upper()
+    asset_id = upsert_asset(conn, ticker, prices.KNOWN_COINS.get(ticker),
+                            "crypto", ticker)
+    ids: list[int] = []
+    with conn:
+        for t in txs:
+            cur = conn.execute(
+                "INSERT INTO transactions(account_id, asset_id, type, date,"
+                " quantity, price, amount, fees, currency, note)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (body.account_id, asset_id, t["type"], t["date"],
+                 t["quantity"], t["price"], t["amount"], t["fees"],
+                 t["currency"], t["note"]),
+            )
+            ids.append(cur.lastrowid)
+    return {"account_id": body.account_id, "address": body.address,
+            "ticker": ticker, "imported": len(ids), "ids": ids}
 
 
 @app.get("/api/holdings")

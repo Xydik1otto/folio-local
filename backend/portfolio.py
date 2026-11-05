@@ -29,6 +29,8 @@ def _rate(conn, date: str) -> dict[str, float]:
 def _to_account_ccy(conn, amount: float, currency: str, date: str, base: str) -> float:
     if currency.upper() == base.upper():
         return amount
+    if amount == 0:  # zero needs no rate (e.g. on-chain buys without a price)
+        return 0.0
     rates = _rate(conn, date)
     if not rates:
         raise ValueError(f"no FX rates stored on or before {date}")

@@ -118,11 +118,30 @@ curl -X POST localhost:8000/api/import/csv -H 'content-type: application/json' \
 curl -X POST localhost:8000/api/import/mapped -H 'content-type: application/json' \
   -d '{"account_id":1,"csv_text":"TradeDate,Symbol,Side,Quantity,TradePrice,Currency\n20240115,AAPL,Buy,10,190.5,USD",
        "mapping":{"date":"TradeDate","ticker":"Symbol","action":"Side","quantity":"Quantity","price":"TradePrice","currency":"Currency"},
-       "date_format":"YYYYMMDD","action_map":{"buy":"buy","sell":"sell"}}'
+       "date_format":"YYYYMMDD","action_map":{"buy":"buy","sell":"sell"}}',
+
+# імпорт: крипто-транзакції з блокчейн-експлорера (blockchain.info rawaddr)
+curl -X POST localhost:8000/api/import/crypto-explorer -H 'content-type: application/json' \
+  -d '{"account_id":1,"address":"1A1zP1eP5QGefi2qHNfRjvG4v1k8p7jT8X"}'
 ```
 
 UI: відкрийте http://127.0.0.1:8000/ — дашборд (графік вартості, P/L, XIRR),
 таблиця позицій, візард імпорту CSV, backfill цін. Без build-степу.
+
+## Авторизація (опційно)
+
+За замовчуванням сервер відкритий лише для localhost — для одиночного
+користувача цього достатньо. Якщо відкриваєте портфель назовні (reverse proxy,
+VPN, домашня мережа), увімкніть single-user Basic auth двома змінними:
+
+```bash
+export FOLIO_AUTH_USER="alice"
+export FOLIO_AUTH_PASSWORD="довгий-надійний-пароль"
+```
+
+Без правильних облікових даних усі шляхи, крім `/api/health` (для
+uptime-монітора), відповідають `401`. Basic auth передавайте лише через HTTPS
+(TLS-термінація на reverse proxy — nginx, Caddy).
 
 ## Що саме "правильного" в математиці
 

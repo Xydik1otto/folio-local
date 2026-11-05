@@ -108,6 +108,17 @@ sudo loginctl enable-linger $USER
 Корисні команди: `systemctl --user restart folio-local`,
 `journalctl --user -u folio-local -f` (логи).
 
+### Альтернатива: деплой одним скриптом (без Docker)
+
+```bash
+./scripts/deploy-local.sh                 # venv + залежності + база + сервер
+./scripts/deploy-local.sh --install-only  # тільки підготувати, сервер не запускати
+FOLIO_HOST=0.0.0.0 FOLIO_PORT=8080 ./scripts/deploy-local.sh
+```
+
+Скрипт створює `.venv`, ставить `requirements.txt`, ініціалізує `folio.db`
+і запускає `uvicorn backend.main:app` — добре пасує до systemd-юніта вище.
+
 ---
 
 ## Оновлення
@@ -123,6 +134,19 @@ pip install -r requirements.txt
 **Перед оновленням зробіть бекап**: у інтерфейсі кнопка
 «Завантажити бекап (.db)» — або просто скопіюйте файл `folio.db` кудись у
 безпечне місце. Ваші дані живуть тільки в цьому одному файлі.
+
+## Доступ по паролю (опційно)
+
+Якщо сервер бачить не лише ваш комп'ютер (reverse proxy, VPN, домашня мережа),
+увімкніть single-user Basic auth — задайте обидві змінні середовища перед
+запуском сервера:
+
+- Linux/macOS: `export FOLIO_AUTH_USER="alice"` та `export FOLIO_AUTH_PASSWORD="..."` (або пропишіть їх у юніті `folio-local.service` у секції `[Service]` як `Environment=...`).
+- Windows: `$env:FOLIO_AUTH_USER="alice"` та `$env:FOLIO_AUTH_PASSWORD="..."` у PowerShell перед `start.bat`.
+
+Тоді кожна сторінка, крім `/api/health`, вимагатиме логін і пароль (HTTP 401
+інакше). Використовуйте цю автентифікацію тільки за HTTPS — TLS має
+термінувати reverse proxy.
 
 ## Опціонально: нативне ядро (.NET 10) для швидшої математики
 
