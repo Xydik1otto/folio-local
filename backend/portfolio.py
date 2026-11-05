@@ -278,3 +278,61 @@ def allocation(conn, account_id: int, as_of: str | None = None) -> dict:
             "total": total,
             "shares": {k: round(v / total, 6) for k, v in groups.items()}
             if total > 1e-9 else {}}
+
+
+def realized_gains(conn, account_id: int, year: int, method: str = "fifo") -> dict:
+    """Податковий прев'ю: реалізовані прибутки/збитки за рік, метод
+    FIFO або LIFO. Лоти ведуться per-ticker у валюті рахунку (курс на
+    дату купівлі); кожен sell з'їдає лоти зліва (FIFO) або справа (LIFO).
+    """
+    if method not in ("fifo", "lifo"):
+        raise ValueError("method must be 'fifo' or 'lifo'")
+    account = conn.execute("SELECT * FROM accounts WHERE id = ?",
+                           (account_id,)).fetchone()
+    if account is None:
+        raise ValueError(f"account {account_id} not found")
+    base = account["currency"].upper()
+
+    lots: dict[str, list[list]] = {}  # ticker -> [[date, qty, unit_cost_base], ...]
+    sales = []
+    total_gain = 0.0
+    for t in account_transactions(conn, account_id):
+        if t["type"] not in ("buy", "sell") or not t["ticker"]:
+            continue
+        qty = t["quantity"] or 0.0
+        total_base = _to_account_ccy(
+            conn, qty * (t["price"] or 0.0) + (t["fees"] or 0.0),
+            t["currency"].upper(), t["date"], base)
+        book = lots.setdefault(t["ticker"], [])
+        if t["type"] == "buy":
+            if qty > 1e-12:
+                book.append([t["date"], qty, total_base / qty])
+            continue
+        # sell: match against lots
+        remaining = qty
+        cost_matched = 0.0
+        pick = 0 if method == "fifo" else -1
+        while remaining > 1e-12 and book:
+            lot = book[pick]
+            take = min(remaining, lot[1])
+            cost_matched += take * lot[2]
+            lot[1] -= take
+            remaining -= take
+            if lot[1] <= 1e-12:
+                book.pop(pick)
+        proceeds = _to_account_ccy(conn, qty * (t["price"] or 0.0),
+                                   t["currency"].upper(), t["date"], base)
+        fees = _to_account_ccy(conn, t["fees"] or 0.0,
+                               t["currency"].upper(), t["date"], base)
+        gain = proceeds - fees - cost_matched
+        if t["date"][:4] == str(year):
+            sales.append({
+                "date": t["date"], "ticker": t["ticker"],
+                "quantity": round(qty, 8),
+                "proceeds": round(proceeds - fees, 2),
+                "cost_basis": round(cost_matched, 2),
+                "gain": round(gain, 2),
+            })
+            total_gain += gain
+    return {"method": method, "year": year, "currency": base,
+            "sales": sales, "total_gain": round(total_gain, 2)}

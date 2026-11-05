@@ -62,6 +62,15 @@
 </fieldset>
 <p id="msg"></p>
 
+<h2>Податковий прев'ю (FIFO/LIFO)</h2>
+<fieldset>
+  <legend>Реалізовані прибутки за рік</legend>
+  <input id="taxYear" type="number" value="2024" min="2000" max="2100">
+  <select id="taxMethod"><option value="fifo">FIFO</option><option value="lifo">LIFO</option></select>
+  <button onclick="loadTax()">Порахувати</button>
+</fieldset>
+<table id="tax"></table>
+
 <h2>Історія цін (backfill)</h2>
 <fieldset>
   <legend>Stooq: завантажити денні ціни за період</legend>
@@ -215,6 +224,24 @@ async function doMappedImport() {
   const body = await r.json();
   msg(r.ok ? `Імпортовано ${body.imported} транзакцій` : 'Помилка: ' + (body.detail || JSON.stringify(body)));
   if (r.ok) load();
+}
+
+async function loadTax() {
+  const acc = await j('/api/accounts');
+  if (!acc.length) return;
+  const year = document.getElementById('taxYear').value;
+  const method = document.getElementById('taxMethod').value;
+  const t = await j(`/api/tax/preview?account_id=${acc[0].id}&year=${year}&method=${method}`);
+  const rows = (t.sales || []).map(s =>
+    `<tr><td>${s.date}</td><td>${s.ticker}</td><td>${s.quantity}</td>` +
+    `<td>${s.proceeds.toFixed(2)}</td><td>${s.cost_basis.toFixed(2)}</td>` +
+    `<td class="${s.gain >= 0 ? 'pos' : 'neg'}">${s.gain.toFixed(2)}</td></tr>`).join('');
+  document.getElementById('tax').innerHTML =
+    `<tr><th>Дата</th><th>Тікер</th><th>К-ть</th><th>Виторг</th>` +
+    `<th>Собівартість</th><th>Прибуток</th></tr>` +
+    (rows || '<tr><td colspan=6>продажів за рік немає</td></tr>') +
+    `<tr><th colspan=5>Разом (${t.method}, ${t.currency})</th>` +
+    `<th class="${t.total_gain >= 0 ? 'pos' : 'neg'}">${t.total_gain.toFixed(2)}</th></tr>`;
 }
 
 async function backfill() {
