@@ -46,7 +46,9 @@ def _candidates() -> list[list[str]]:
     cands: list[list[str]] = []
     env = os.environ.get("FOLIO_NATIVE")
     if env:
-        cands.append([env])
+        # Explicit override is authoritative: if it does not work, we do NOT
+        # silently switch to some other executable the user did not ask for.
+        return [[env]]
     base = _REPO / "dotnet" / "FolioCli" / "bin" / "Release" / "net10.0"
     for exe in sorted(base.glob(f"*/publish/{_EXE_NAME}")):
         cands.append([str(exe)])
