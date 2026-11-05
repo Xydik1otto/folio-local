@@ -14,7 +14,7 @@ from . import csv_import, fx as fxmod, portfolio, prices, report as report_mod
 from . import warnings as warnings_mod
 from .db import DB_PATH, account_transactions, connect, get_asset, upsert_asset
 
-app = FastAPI(title="folio-local", version="0.3.0",
+app = FastAPI(title="folio-local", version="0.4.0",
               description="Self-hosted portfolio tracker with correct TWR/XIRR math")
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
