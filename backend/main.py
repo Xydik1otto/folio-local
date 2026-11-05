@@ -15,7 +15,8 @@ from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import csv_import, fx as fxmod, portfolio, prices, report as report_mod
+from . import csv_import, crypto_explorer, fx as fxmod, portfolio, prices
+from . import report as report_mod
 from . import warnings as warnings_mod
 from . import backup as backup_mod
 from . import demo as demo_mod
@@ -126,6 +127,12 @@ class BackfillIn(BaseModel):
     ticker: str
     start: str
     end: str
+
+
+class CryptoExplorerIn(BaseModel):
+    account_id: int
+    address: str
+    ticker: str = "BTC"
 
 
 # --- API ---------------------------------------------------------------------
@@ -390,6 +397,39 @@ def import_mapped(body: ImportMappedIn):
     except csv_import.ImportRowError as e:
         raise HTTPException(400, str(e))
     return {"imported": n}
+
+
+@app.post("/api/import/crypto-explorer")
+def import_crypto_explorer(body: CryptoExplorerIn):
+    """Import BTC on-chain transactions of a wallet address from a public
+    blockchain explorer (blockchain.info rawaddr) into an account.
+    On-chain transfers are not market trades: price stays None and the
+    valuation comes from price snapshots (e.g. CoinGecko backfill)."""
+    conn = get_conn()
+    if not conn.execute("SELECT 1 FROM accounts WHERE id = ?",
+                        (body.account_id,)).fetchone():
+        raise HTTPException(404, "account not found")
+    try:
+        txs = crypto_explorer.fetch_and_parse(body.address, body.ticker)
+    except crypto_explorer.ExplorerError as e:
+        raise HTTPException(422, str(e))
+    ticker = body.ticker.upper()
+    asset_id = upsert_asset(conn, ticker, prices.KNOWN_COINS.get(ticker),
+                            "crypto", ticker)
+    ids: list[int] = []
+    with conn:
+        for t in txs:
+            cur = conn.execute(
+                "INSERT INTO transactions(account_id, asset_id, type, date,"
+                " quantity, price, amount, fees, currency, note)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (body.account_id, asset_id, t["type"], t["date"],
+                 t["quantity"], t["price"], t["amount"], t["fees"],
+                 t["currency"], t["note"]),
+            )
+            ids.append(cur.lastrowid)
+    return {"account_id": body.account_id, "address": body.address,
+            "ticker": ticker, "imported": len(ids), "ids": ids}
 
 
 @app.get("/api/holdings")

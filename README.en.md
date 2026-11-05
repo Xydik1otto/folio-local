@@ -133,7 +133,11 @@ curl -X POST localhost:8000/api/import/csv -H 'content-type: application/json' \
 curl -X POST localhost:8000/api/import/mapped -H 'content-type: application/json' \
   -d '{"account_id":1,"csv_text":"TradeDate,Symbol,Side,Quantity,TradePrice,Currency\n20240115,AAPL,Buy,10,190.5,USD",
        "mapping":{"date":"TradeDate","ticker":"Symbol","action":"Side","quantity":"Quantity","price":"TradePrice","currency":"Currency"},
-       "date_format":"YYYYMMDD","action_map":{"buy":"buy","sell":"sell"}}'
+       "date_format":"YYYYMMDD","action_map":{"buy":"buy","sell":"sell"}}',
+
+# import: on-chain crypto transactions from a blockchain explorer (blockchain.info)
+curl -X POST localhost:8000/api/import/crypto-explorer -H 'content-type: application/json' \
+  -d '{"account_id":1,"address":"1A1zP1eP5QGefi2qHNfRjvG4v1k8p7jT8X"}'
 ```
 
 UI: open http://127.0.0.1:8000/ — dashboard (value chart, P/L, XIRR),
