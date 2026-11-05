@@ -124,6 +124,19 @@ pip install -r requirements.txt
 «Завантажити бекап (.db)» — або просто скопіюйте файл `folio.db` кудись у
 безпечне місце. Ваші дані живуть тільки в цьому одному файлі.
 
+## Доступ по паролю (опційно)
+
+Якщо сервер бачить не лише ваш комп'ютер (reverse proxy, VPN, домашня мережа),
+увімкніть single-user Basic auth — задайте обидві змінні середовища перед
+запуском сервера:
+
+- Linux/macOS: `export FOLIO_AUTH_USER="alice"` та `export FOLIO_AUTH_PASSWORD="..."` (або пропишіть їх у юніті `folio-local.service` у секції `[Service]` як `Environment=...`).
+- Windows: `$env:FOLIO_AUTH_USER="alice"` та `$env:FOLIO_AUTH_PASSWORD="..."` у PowerShell перед `start.bat`.
+
+Тоді кожна сторінка, крім `/api/health`, вимагатиме логін і пароль (HTTP 401
+інакше). Використовуйте цю автентифікацію тільки за HTTPS — TLS має
+термінувати reverse proxy.
+
 ## Опціонально: нативне ядро (.NET 10) для швидшої математики
 
 XIRR/TWR можна прискорити, зібравши нативне C#-ядро. Це **не обов'язково**:

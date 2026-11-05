@@ -139,6 +139,21 @@ curl -X POST localhost:8000/api/import/mapped -H 'content-type: application/json
 UI: open http://127.0.0.1:8000/ — dashboard (value chart, P/L, XIRR),
 holdings table, CSV import wizard, price backfill. No build step.
 
+## Authentication (optional)
+
+By default the server is open on localhost only — enough for a single local
+user. If you expose the portfolio through a reverse proxy, VPN or home network,
+enable single-user Basic auth with two environment variables:
+
+```bash
+export FOLIO_AUTH_USER="alice"
+export FOLIO_AUTH_PASSWORD="a-long-strong-password"
+```
+
+Every path except `/api/health` (kept open for uptime monitors) then answers
+`401` without valid credentials. Only serve Basic auth over HTTPS — terminate
+TLS on the reverse proxy (nginx, Caddy).
+
 ## What exactly is "correct" in the math
 
 1. **XIRR** — external flows only (deposits negative, withdrawals positive,

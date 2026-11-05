@@ -124,6 +124,21 @@ curl -X POST localhost:8000/api/import/mapped -H 'content-type: application/json
 UI: відкрийте http://127.0.0.1:8000/ — дашборд (графік вартості, P/L, XIRR),
 таблиця позицій, візард імпорту CSV, backfill цін. Без build-степу.
 
+## Авторизація (опційно)
+
+За замовчуванням сервер відкритий лише для localhost — для одиночного
+користувача цього достатньо. Якщо відкриваєте портфель назовні (reverse proxy,
+VPN, домашня мережа), увімкніть single-user Basic auth двома змінними:
+
+```bash
+export FOLIO_AUTH_USER="alice"
+export FOLIO_AUTH_PASSWORD="довгий-надійний-пароль"
+```
+
+Без правильних облікових даних усі шляхи, крім `/api/health` (для
+uptime-монітора), відповідають `401`. Basic auth передавайте лише через HTTPS
+(TLS-термінація на reverse proxy — nginx, Caddy).
+
 ## Що саме "правильного" в математиці
 
 1. **XIRR** — тільки зовнішні потоки (deposits від'ємні, withdrawals

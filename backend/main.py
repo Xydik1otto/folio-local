@@ -1,11 +1,13 @@
 # FastAPI application: REST API + static frontend for folio-local.
 from __future__ import annotations
 
+import base64
 import csv
 import datetime as dt
 import io
 import json
 import os
+import secrets
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -23,6 +25,51 @@ app = FastAPI(title="folio-local", version="1.0.0",
               description="Self-hosted portfolio tracker with correct TWR/XIRR math")
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+
+# --- optional single-user HTTP Basic auth ------------------------------------
+# Disabled by default (local single-user use). Set BOTH FOLIO_AUTH_USER and
+# FOLIO_AUTH_PASSWORD to require Basic auth on every path except /api/health
+# (which acts as the load-balancer/uptime probe). HTTPS termination is the
+# reverse proxy's job — Basic auth credentials must never travel over plain
+# HTTP, see INSTALL.md.
+AUTH_EXEMPT_PATHS = {"/api/health"}
+AUTH_ENV_USER = "FOLIO_AUTH_USER"
+AUTH_ENV_PASSWORD = "FOLIO_AUTH_PASSWORD"
+
+
+def auth_enabled() -> bool:
+    return bool(os.environ.get(AUTH_ENV_USER) and os.environ.get(AUTH_ENV_PASSWORD))
+
+
+def check_basic_auth(request) -> bool:
+    """Validate the request's Basic auth header against the configured
+    single-user credentials. True also when auth is disabled."""
+    user = os.environ.get(AUTH_ENV_USER) or ""
+    password = os.environ.get(AUTH_ENV_PASSWORD) or ""
+    if not (user and password):
+        return True  # auth not configured -> open access (local default)
+    header = request.headers.get("Authorization", "")
+    if not header.startswith("Basic "):
+        return False
+    try:
+        decoded = base64.b64decode(header[len("Basic "):].strip()).decode("utf-8")
+    except Exception:
+        return False
+    req_user, _, req_pass = decoded.partition(":")
+    # compare_digest keeps timing constant for both fields
+    return (secrets.compare_digest(req_user, user)
+            and secrets.compare_digest(req_pass, password))
+
+
+@app.middleware("http")
+async def basic_auth_middleware(request, call_next):
+    if (request.url.path not in AUTH_EXEMPT_PATHS
+            and not check_basic_auth(request)):
+        return Response(
+            status_code=401,
+            headers={"WWW-Authenticate": 'Basic realm="folio-local"'},
+        )
+    return await call_next(request)
 
 
 def db_path() -> str:
