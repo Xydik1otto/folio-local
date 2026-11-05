@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<title>folio-local — Облік без реєстрації</title>
+<style>
+:root {
+  --bg: #0f1420; --panel: #171e2e; --border: #2a3450;
+  --text: #dce3f2; --muted: #8a93a8; --accent: #4f8cff; --pos: #34c77b;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: system-ui, sans-serif; max-width: 760px; margin: 2rem auto;
+  padding: 0 1rem; background: var(--bg); color: var(--text); line-height: 1.6;
+}
+h1 { font-size: 1.6rem; }
+h2 { font-size: 1.15rem; margin-top: 1.8rem; }
+a { color: var(--accent); }
+.box { border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.2rem; background: var(--panel); }
+ul { padding-left: 1.3rem; }
+li { margin: .35rem 0; }
+.yes { color: var(--pos); font-weight: 700; }
+footer { margin-top: 2.5rem; color: var(--muted); font-size: .9rem; }
+</style>
+</head>
+<body>
+<h1>Облік без реєстрації</h1>
+<p>folio-local працює <b>повністю на вашому пристрої</b>. Це не маркетингова
+обіцянка, а архітектурний факт, який ви можете перевірити самостійно.</p>
+
+<div class="box">
+<h2>Що це означає на практиці</h2>
+<ul>
+  <li><span class="yes">Без реєстрації</span> — немає акаунтів, email, паролів, SMS.</li>
+  <li><span class="yes">Без хмарної бази</span> — усі дані у локальному файлі
+      <code>folio.db</code> (SQLite) на вашому диску.</li>
+  <li><span class="yes">Без телеметрії</span> — жодних аналітичних скриптів, пікселів
+      чи трекерів у коді.</li>
+  <li><span class="yes">Без_cookies_трекерів</span> — додаток не встановлює
+      рекламних чи аналітичних cookie.</li>
+  <li><span class="yes">Працює офлайн</span> — після першого завантаження
+      інтерфейс доступний без інтернету (PWA service worker).</li>
+</ul>
+</div>
+
+<h2>Єдині два винятки (і обидва — ваші дії)</h2>
+<ol>
+  <li><b>Котирування.</b> Коли ви натискаєте «оновити ціни» або backfill,
+      сервер робить запит до публічних джерел (Stooq, CoinGecko, ECB).
+      Запит містить <i>тільки тікер і діапазон дат</i> — не ваші суми, не ваші
+      угоди, не вашу особистість.</li>
+  <li><b>CSV-імпорт.</b> Файл, який ви імпортуєте, парситься на вашому ж сервері
+      і негайно зберігається у вашу локальну SQLite. Нікуди він не передається.</li>
+</ol>
+
+<h2>Як перевірити</h2>
+<ul>
+  <li>Вимкніть інтернет — додаток продовжує працювати (дані читання/перегляд).</li>
+  <li>Погляньте на траєкторію трафіку: у devtools Network видно лише
+      <code>localhost</code>, Stooq/CoinGecko/ECB під час оновлення цін.</li>
+  <li>Код відкритий: жодних прихованих викликів немає.</li>
+</ul>
+
+<h2>Ваші дані — ваші</h2>
+<p>Експорт усе-в-одному у два кліки (JSON/CSV), резервна копія бази — одна кнопка.
+Видалити проєкт = видалити один файл <code>folio.db</code>. Нічого не залишається
+ніде: ані в хмарі, ані в нас.</p>
+
+<footer>
+<a href="/">← Назад до портфеля</a> · folio-local · дані не залишають ваш пристрій
+</footer>
+</body>
+</html>

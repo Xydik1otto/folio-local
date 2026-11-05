@@ -417,4 +417,10 @@ def index():
     return FileResponse(STATIC_DIR / "index.html")
 
 
+@app.get("/privacy")
+def privacy():
+    """Privacy-first сторінка «Облік без реєстрації»."""
+    return FileResponse(STATIC_DIR / "privacy.html")
+
+
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
