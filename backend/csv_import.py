@@ -19,6 +19,7 @@ KINDS = {"stock", "etf", "crypto", "cash"}
 DATE_FORMATS = {
     "YYYY-MM-DD": "%Y-%m-%d",
     "DD.MM.YYYY": "%d.%m.%Y",
+    "DD-MM-YYYY": "%d-%m-%Y",
     "DD/MM/YYYY": "%d/%m/%Y",
     "MM/DD/YYYY": "%m/%d/%Y",
     "YYYYMMDD": "%Y%m%d",
@@ -217,6 +218,45 @@ PRESETS: dict[str, dict] = {
                     "currency": "Currency", "fees": "Fees"},
         "date_format": "YYYY-MM-DD",
         "action_map": {"buy": "buy", "sell": "sell", "dividend": "dividend"},
+    },
+    "trade_republic": {
+        "label": "Trade Republic — CSV export (Datum/ISIN/Typ/…)",
+        "mapping": {"date": "Datum", "ticker": "ISIN", "action": "Typ",
+                    "quantity": "Stück", "price": "Preis",
+                    "currency": "Währung", "fees": "Gebühr"},
+        "date_format": "DD.MM.YYYY",
+        "action_map": {"kauf": "buy", "buy": "buy", "verkauf": "sell",
+                       "sell": "sell", "dividende": "dividend"},
+    },
+    "degiro": {
+        "label": "DEGIRO — Transactions export (Date/Product/ISIN/…)",
+        "mapping": {"date": "Date", "ticker": "ISIN", "name": "Product",
+                    "action": "Type", "quantity": "Quantity",
+                    "price": "Price", "currency": "Currency", "fees": "Fees"},
+        "date_format": "DD-MM-YYYY",
+        "action_map": {"buy": "buy", "sell": "sell", "dividend": "dividend"},
+    },
+    "fidelity": {
+        "label": "Fidelity — Brokerage history (Run Date/Action/Symbol/…)",
+        "mapping": {"date": "Run Date", "ticker": "Symbol", "action": "Action",
+                    "quantity": "Quantity", "price": "Price ($)",
+                    "currency": "Currency", "fees": "Fees ($)"},
+        "date_format": "MM/DD/YYYY",
+        "action_map": {"buy": "buy", "bought": "buy", "sell": "sell",
+                       "sold": "sell", "dividend": "dividend"},
+    },
+    "tinkoff_generic": {
+        # Tinkoff-format broker report, English column headers only.
+        # (Ніколи не додаємо російську локалізацію — політичне правило власника.)
+        "label": "Tinkoff-format broker report (EN headers)",
+        "mapping": {"date": "Operation date", "ticker": "Ticker",
+                    "name": "Product name", "action": "Type",
+                    "quantity": "Quantity", "price": "Price",
+                    "currency": "Currency", "fees": "Broker commission"},
+        "date_format": "DD.MM.YYYY",
+        "action_map": {"buy": "buy", "sell": "sell", "dividend": "dividend",
+                       "fee": "fee", "deposit": "deposit",
+                       "withdrawal": "withdrawal"},
     },
     "generic": {
         "label": "folio-local канонічний (date,ticker,action,...)",
