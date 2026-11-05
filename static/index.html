@@ -149,6 +149,16 @@ button.period.active { background: var(--accent); color: #fff; border-color: var
 </fieldset>
 <div class="table-wrap"><table id="tax"></table></div>
 
+<h2>Резервна копія бази</h2>
+<fieldset>
+  <legend>Backup/restore одним кліком</legend>
+  <button onclick="downloadBackup()">Завантажити бекап (.db)</button>
+  <input type="file" id="restoreFile" accept=".db,.sqlite,.sqlite3,application/x-sqlite3">
+  <button onclick="doRestore()">Відновити з файлу</button>
+  <p style="color:var(--muted);font-size:.85rem;margin:.4rem 0 0">
+    Відновлення <b>замінює</b> поточну базу — попередньо зробіть бекап.</p>
+</fieldset>
+
 <h2>Історія цін (backfill)</h2>
 <fieldset>
   <legend>Stooq: завантажити денні ціни за період</legend>
@@ -369,6 +379,26 @@ function taxExport(format) {
   const year = document.getElementById('taxYear').value;
   const method = document.getElementById('taxMethod').value;
   window.open(`/api/tax/export?account_id=${id}&year=${year}&method=${method}&format=${format}`, '_blank');
+}
+
+function downloadBackup() {
+  window.open('/api/backup', '_blank');
+  msg('Бекап завантажується…');
+}
+
+async function doRestore() {
+  const f = document.getElementById('restoreFile').files[0];
+  if (!f) { msg('Оберіть файл бекапу (.db)'); return; }
+  if (!confirm('Відновлення ЗАМІНЮЄ поточну базу даних. Продовжити?')) return;
+  const data = await f.arrayBuffer();
+  const r = await fetch('/api/restore', {method: 'POST', body: data});
+  const body = await r.json();
+  if (r.ok) {
+    msg(`Базу відновлено: ${body.transactions} транзакцій. Перезавантажте сторінку.`);
+    reload();
+  } else {
+    msg('Помилка відновлення: ' + (body.detail || JSON.stringify(body)));
+  }
 }
 
 async function backfill() {

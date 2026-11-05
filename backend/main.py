@@ -5,13 +5,14 @@ import datetime as dt
 import os
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import csv_import, fx as fxmod, portfolio, prices, report as report_mod
 from . import warnings as warnings_mod
+from . import backup as backup_mod
 from .db import DB_PATH, account_transactions, connect, get_asset, upsert_asset
 
 app = FastAPI(title="folio-local", version="0.4.0",
@@ -20,8 +21,13 @@ app = FastAPI(title="folio-local", version="0.4.0",
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 
+def db_path() -> str:
+    """Path of the live SQLite database file (FOLIO_DB env or default)."""
+    return os.environ.get("FOLIO_DB", DB_PATH)
+
+
 def get_conn():
-    return connect(os.environ.get("FOLIO_DB", DB_PATH))
+    return connect(db_path())
 
 
 # --- request models ----------------------------------------------------------
@@ -400,6 +406,29 @@ def warnings_panel(account_id: int, as_of: str | None = None):
         return warnings_mod.collect_warnings(conn, account_id, as_of)
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+@app.get("/api/backup")
+def backup_download():
+    """One-click резервна копія: snapshot усієї SQLite-бази як файл."""
+    import datetime as _dt
+    data = backup_mod.backup_bytes(db_path())
+    stamp = _dt.date.today().isoformat().replace("-", "")
+    return Response(
+        data, media_type="application/x-sqlite3",
+        headers={"Content-Disposition":
+                 f'attachment; filename="folio-backup-{stamp}.db"'})
+
+
+@app.post("/api/restore")
+async def restore_upload(request: Request):
+    """Відновлення з резервної копії: замінює активну базу завантаженим файлом."""
+    data = await request.body()
+    try:
+        n = backup_mod.restore_bytes(db_path(), data)
+    except backup_mod.RestoreError as e:
+        raise HTTPException(400, str(e))
+    return {"restored": True, "transactions": n}
 
 
 @app.post("/api/prices/backfill")
