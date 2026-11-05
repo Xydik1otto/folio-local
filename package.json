@@ -1,0 +1,19 @@
+{
+  "name": "folio-local-mobile",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Capacitor shell for folio-local: connects the mobile WebView to your self-hosted folio-local server (no UI bundled).",
+  "scripts": {
+    "cap:add": "cap add android && cap add ios",
+    "cap:sync": "cap sync android && cap sync ios"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/cli": "^6.2.1",
+    "@capacitor/ios": "^6.2.1",
+    "typescript": "5.3"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.2.1"
+  }
+}

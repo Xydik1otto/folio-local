@@ -15,3 +15,17 @@ build/
 dotnet/**/bin/
 dotnet/**/obj/
 
+
+# Capacitor / mobile
+dist/
+app/build/
+node_modules/
+android/app/build/
+android/.gradle/
+android/local.properties
+android/capacitor-cordova-android-plugins/
+ios/App/Pods/
+ios/App/App/public/
+ios/App/output/
+ios/DerivedData/
+*.ipa

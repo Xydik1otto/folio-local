@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>folio-local</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, sans-serif; display: grid; place-items: center; min-height: 100dvh; margin: 0; background: #101418; color: #e8eef4; }
+  main { max-width: 26rem; padding: 1.5rem; text-align: center; }
+  h1 { font-size: 1.4rem; margin: 0 0 .4rem; }
+  p { opacity: .8; font-size: .95rem; }
+  input { width: 100%; box-sizing: border-box; padding: .7rem .9rem; font-size: 1rem; border-radius: .6rem; border: 1px solid #3a4552; background: #1a2027; color: inherit; margin: 1rem 0; }
+  button { width: 100%; padding: .75rem; font-size: 1rem; border: 0; border-radius: .6rem; background: #2f6feb; color: #fff; font-weight: 600; }
+  .err { color: #ff8f8f; font-size: .85rem; min-height: 1.2em; }
+</style>
+</head>
+<body>
+<main>
+  <h1>folio-local</h1>
+  <p data-uk>Введіть адресу вашого сервера folio-local (наприклад, http://192.168.1.10:8000 або адреса Tailscale).</p>
+  <p data-en hidden>Enter the address of your folio-local server (e.g. http://192.168.1.10:8000 or a Tailscale address).</p>
+  <input id="srv" type="url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="http://192.168.1.10:8000">
+  <button id="go" data-uk>Підключитися</button><button id="go2" data-en hidden>Connect</button>
+  <div class="err" id="err"></div>
+</main>
+<script>
+// One-time splash: remember the server address, then hand the WebView over to it.
+var saved = localStorage.getItem('folio.serverUrl');
+if (saved) { location.replace(saved); }
+function go() {
+  var v = document.getElementById('srv').value.trim();
+  var err = document.getElementById('err');
+  if (!/^https?:\/\//i.test(v)) { v = 'http://' + v; }
+  try { var u = new URL(v); if (u.protocol !== 'http:' && u.protocol !== 'https:') throw 0; v = u.origin + (u.pathname === '/' ? '' : u.pathname); }
+  catch (e) { err.textContent = 'Invalid URL / Некоректна адреса'; return; }
+  localStorage.setItem('folio.serverUrl', v);
+  location.replace(v);
+}
+document.getElementById('go').onclick = go;
+document.getElementById('go2').onclick = go;
+document.getElementById('srv').addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+if ((navigator.language || '').toLowerCase().startsWith('uk') === false) {
+  document.querySelectorAll('[data-uk]').forEach(function (el) { el.hidden = true; });
+  document.querySelectorAll('[data-en]').forEach(function (el) { el.hidden = false; });
+}
+</script>
+</body>
+</html>
