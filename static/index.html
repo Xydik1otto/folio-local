@@ -76,56 +76,64 @@ button.period.active { background: var(--accent); color: #fff; border-color: var
 </head>
 <body>
 <h1>folio-local</h1>
-<p>Самохостинговий портфельний трекер. Дані — тільки у вашій SQLite.
-<a href="/privacy">Облік без реєстрації</a> — що це означає на практиці.</p>
+<p><span data-i18n="app_subtitle">Самохостинговий портфельний трекер. Дані — тільки у вашій SQLite.</span>
+<a href="/privacy" data-i18n="privacy_link">Облік без реєстрації</a><span data-i18n="privacy_hint"> — що це означає на практиці.</span></p>
 
-<div id="warnPanel" class="ok"><b>Попередження</b> <span id="warnCount">—</span><ul id="warnList"></ul></div>
+<div class="toolbar" style="justify-content:flex-end">
+  <label for="langSel" data-i18n="lang_label" style="color:var(--muted);font-size:.85rem">Мова</label>
+  <select id="langSel" aria-label="Мова інтерфейсу / UI language">
+    <option value="uk">UA — українська</option>
+    <option value="en">EN — English</option>
+  </select>
+</div>
+
+<div id="warnPanel" class="ok"><b data-i18n="warnings_panel">Попередження</b> <span id="warnCount">—</span><ul id="warnList"></ul></div>
 
 <div class="cards" id="cards"></div>
 
 <div id="chartBox">
   <div class="toolbar">
-    <b>Вартість портфеля</b>
+    <b data-i18n="chart_title">Вартість портфеля</b>
     <span id="periodBtns">
-      <button class="period" data-days="30">1М</button>
-      <button class="period" data-days="90">3М</button>
-      <button class="period" data-days="180">6М</button>
-      <button class="period" data-days="365">1Р</button>
-      <button class="period" data-days="0">Всі</button>
+      <button class="period" data-days="30" aria-label="1 місяць">1М</button>
+      <button class="period" data-days="90" aria-label="3 місяці">3М</button>
+      <button class="period" data-days="180" aria-label="6 місяців">6М</button>
+      <button class="period" data-days="365" aria-label="1 рік">1Р</button>
+      <button class="period" data-days="0" data-i18n="period_all" aria-label="Увесь період">Всі</button>
     </span>
-    <label style="display:inline"><input type="checkbox" id="benchToggle"> лінія SPY</label>
-    <select id="accountSel" onchange="reload()"></select>
+    <label style="display:inline"><input type="checkbox" id="benchToggle" aria-label="Показати лінію SPY"> <span data-i18n="spy_toggle">лінія SPY</span></label>
+    <select id="accountSel" onchange="reload()" aria-label="Рахунок"></select>
   </div>
   <canvas id="chart" height="110"></canvas>
 </div>
 
-<h2>Позиції (holdings)</h2>
+<h2 data-i18n="sec_holdings">Позиції (holdings)</h2>
 <div class="table-wrap"><table id="holdings"></table></div>
 
-<h2>Розподіл активів</h2>
+<h2 data-i18n="sec_alloc">Розподіл активів</h2>
 <div id="allocBox"><canvas id="alloc" width="300" height="200"></canvas></div>
 
-<h2>Попередження</h2>
-<p style="color:var(--muted)">Зведення проблемних даних — панель угорі сторінки (GET /api/warnings).</p>
+<h2 data-i18n="sec_warnings">Попередження</h2>
+<p style="color:var(--muted)" data-i18n="sec_warnings_hint">Зведення проблемних даних — панель угорі сторінки (GET /api/warnings).</p>
 
-<h2>Дивіденди <select id="divYear" onchange="loadDividends()"></select>
+<h2><span data-i18n="sec_dividends">Дивіденди</span> <select id="divYear" onchange="loadDividends()" aria-label="Рік дивідендів"></select>
 <span id="divTotal" style="font-size:.9rem"></span></h2>
 <div class="table-wrap"><table id="dividends"></table></div>
 
-<h2>Імпорт CSV (довільний брокерський файл)</h2>
+<h2 data-i18n="sec_import">Імпорт CSV (довільний брокерський файл)</h2>
 <fieldset>
-  <legend>Крок 1 — файл і рахунок</legend>
-  <input type="file" id="csvfile" accept=".csv,text/csv">
-  <select id="presetSel"><option value="">Пресет брокера: ні</option></select>
-  <button onclick="previewCsv()">Попередній перегляд</button>
+  <legend data-i18n="step1">Крок 1 — файл і рахунок</legend>
+  <input type="file" id="csvfile" accept=".csv,text/csv" aria-label="CSV-файл брокера">
+  <select id="presetSel" aria-label="Пресет брокера"><option value="" data-i18n="preset_none">Пресет брокера: ні</option></select>
+  <button onclick="previewCsv()" data-i18n="btn_preview">Попередній перегляд</button>
 </fieldset>
 <fieldset id="step2" hidden>
-  <legend>Крок 2 — зіставлення колонок</legend>
+  <legend data-i18n="step2">Крок 2 — зіставлення колонок</legend>
   <div id="sampleTable"></div>
   <div class="wiz" id="mapSelectors"></div>
-  <label>Формат дати:
-    <select id="dateFormat">
-      <option value="">YYYY-MM-DD (авто)</option>
+  <label><span data-i18n="date_format_label">Формат дати:</span>
+    <select id="dateFormat" aria-label="Формат дати">
+      <option value="" data-i18n="date_auto">YYYY-MM-DD (авто)</option>
       <option value="DD.MM.YYYY">DD.MM.YYYY</option>
       <option value="DD-MM-YYYY">DD-MM-YYYY</option>
       <option value="DD/MM/YYYY">DD/MM/YYYY</option>
@@ -134,44 +142,81 @@ button.period.active { background: var(--accent); color: #fff; border-color: var
       <option value="YYYY/MM/DD">YYYY/MM/DD</option>
     </select>
   </label>
-  <button onclick="doMappedImport()">Імпортувати</button>
+  <button onclick="doMappedImport()" data-i18n="btn_import">Імпортувати</button>
 </fieldset>
-<p id="msg"></p>
+<p id="msg" aria-live="polite"></p>
 
-<h2>Податковий звіт (FIFO/LIFO)</h2>
+<h2 data-i18n="sec_tax">Податковий звіт (FIFO/LIFO)</h2>
 <fieldset>
-  <legend>Реалізовані прибутки за рік</legend>
-  <input id="taxYear" type="number" value="2024" min="2000" max="2100">
-  <select id="taxMethod"><option value="fifo">FIFO</option><option value="lifo">LIFO</option></select>
-  <button onclick="loadTax()">Порахувати</button>
-  <button class="ghost" onclick="taxExport('csv')">CSV</button>
-  <button class="ghost" onclick="taxExport('html')">HTML (друк)</button>
+  <legend data-i18n="tax_legend">Реалізовані прибутки за рік</legend>
+  <input id="taxYear" type="number" value="2024" min="2000" max="2100" aria-label="Податковий рік">
+  <select id="taxMethod" aria-label="Метод обліку"><option value="fifo">FIFO</option><option value="lifo">LIFO</option></select>
+  <button onclick="loadTax()" data-i18n="btn_calc">Порахувати</button>
+  <button class="ghost" onclick="taxExport('csv')" data-i18n="btn_csv">CSV</button>
+  <button class="ghost" onclick="taxExport('html')" data-i18n="btn_print">HTML (друк)</button>
 </fieldset>
 <div class="table-wrap"><table id="tax"></table></div>
 
-<h2>Резервна копія бази</h2>
+<h2 data-i18n="sec_backup">Резервна копія бази</h2>
 <fieldset>
-  <legend>Backup/restore одним кліком</legend>
-  <button onclick="downloadBackup()">Завантажити бекап (.db)</button>
-  <input type="file" id="restoreFile" accept=".db,.sqlite,.sqlite3,application/x-sqlite3">
-  <button onclick="doRestore()">Відновити з файлу</button>
-  <p style="color:var(--muted);font-size:.85rem;margin:.4rem 0 0">
-    Відновлення <b>замінює</b> поточну базу — попередньо зробіть бекап.</p>
+  <legend data-i18n="backup_legend">Backup/restore одним кліком</legend>
+  <button onclick="downloadBackup()" data-i18n="btn_backup">Завантажити бекап (.db)</button>
+  <input type="file" id="restoreFile" accept=".db,.sqlite,.sqlite3,application/x-sqlite3" aria-label="Файл резервної копії">
+  <button onclick="doRestore()" data-i18n="btn_restore">Відновити з файлу</button>
+  <p style="color:var(--muted);font-size:.85rem;margin:.4rem 0 0" data-i18n="restore_hint">
+    Відновлення замінює поточну базу — попередньо зробіть бекап.</p>
 </fieldset>
 
-<h2>Історія цін (backfill)</h2>
+<h2 data-i18n="sec_backfill">Історія цін (backfill)</h2>
 <fieldset>
-  <legend>Stooq: завантажити денні ціни за період</legend>
-  <input id="bfTicker" placeholder="AAPL">
-  <input id="bfStart" type="date"> — <input id="bfEnd" type="date">
-  <button onclick="backfill()">Backfill</button>
+  <legend data-i18n="backfill_legend">Stooq: завантажити денні ціни за період</legend>
+  <input id="bfTicker" placeholder="AAPL" aria-label="Тікер для backfill">
+  <input id="bfStart" type="date" aria-label="Дата початку"> — <input id="bfEnd" type="date" aria-label="Дата кінця">
+  <button onclick="backfill()" data-i18n="btn_backfill">Backfill</button>
 </fieldset>
 
 <script>
 const CANON = ['date','ticker','action','quantity','price','currency','fees','name','kind'];
-const CANON_UA = {date:'Дата', ticker:'Тікер', action:'Дія', quantity:'Кількість',
-  price:'Ціна', currency:'Валюта', fees:'Комісія', name:'Назва', kind:'Тип активу'};
 let chart = null, allocChart = null, periodDays = 365;
+
+// --- i18n: UA/EN only ( російської локалізації НЕМАЄ і не буде ) -----------
+const LANG_KEY = 'folio-lang';
+const LANGS = ['uk', 'en'];
+let T = {};                       // active dictionary
+function t(key) { return T[key] != null ? T[key] : key; }
+function fmt(key, vars) {
+  let s = t(key);
+  for (const [k, v] of Object.entries(vars || {})) s = s.replace('{' + k + '}', v);
+  return s;
+}
+function detectLang() {
+  const saved = localStorage.getItem(LANG_KEY);
+  if (LANGS.includes(saved)) return saved;
+  const nav = ((navigator.languages && navigator.languages[0]) ||
+               navigator.language || 'en').toLowerCase();
+  return nav.startsWith('uk') ? 'uk' : 'en';
+}
+let LANG = detectLang();
+async function loadLang() {
+  try {
+    const r = await fetch(`/static/i18n/${LANG}.json`);
+    if (r.ok) T = await r.json();
+  } catch (e) { /* fallback: keys render as-is */ }
+  document.documentElement.lang = LANG;
+  document.getElementById('langSel').value = LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const v = t(el.dataset.i18n);
+    if (v !== el.dataset.i18n) el.textContent = v;
+  });
+}
+async function changeLang() {
+  LANG = document.getElementById('langSel').value;
+  localStorage.setItem(LANG_KEY, LANG);
+  await loadLang();
+  await loadAccounts();
+  await reload();
+}
+document.getElementById('langSel').addEventListener('change', changeLang);
 
 async function j(url, opts) { const r = await fetch(url, opts); return r.json(); }
 function msg(t) { document.getElementById('msg').textContent = t; }
@@ -186,11 +231,11 @@ async function loadAccounts() {
   const acc = await j('/api/accounts');
   document.getElementById('accountSel').innerHTML =
     acc.map(a => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join('')
-    || '<option value="">— немає рахунків —</option>';
+    || `<option value="">${t('no_accounts_opt')}</option>`;
   try {
     const presets = await j('/api/import/presets');
     document.getElementById('presetSel').innerHTML =
-      '<option value="">Пресет брокера: ні</option>' +
+      `<option value="">${t('preset_none')}</option>` +
       presets.map(p => `<option value="${p.name}">${p.label}</option>`).join('');
   } catch (e) { /* старий бекенд без пресетів */ }
 }
@@ -205,7 +250,7 @@ async function loadWarnings() {
   if (!id) { list.innerHTML = ''; count.textContent = ''; return; }
   try {
     const w = await j(`/api/warnings?account_id=${id}`);
-    count.textContent = w.count ? `${w.count}` : 'немає ✓';
+    count.textContent = w.count ? `${w.count}` : t('warnings_none');
     panel.className = w.count ? '' : 'ok';
     list.innerHTML = w.warnings.map(x =>
       `<li><span class="badge ${x.severity}">${x.severity}</span> ${x.message}</li>`).join('');
@@ -215,7 +260,7 @@ async function loadWarnings() {
 async function loadDashboard() {
   const id = accId();
   if (!id) {
-    document.getElementById('cards').innerHTML = '<p>Немає рахунків. Створіть через POST /api/accounts.</p>';
+    document.getElementById('cards').innerHTML = `<p>${t('no_accounts')}</p>`;
     return;
   }
   const p = await j(`/api/portfolio?account_id=${id}`);
@@ -235,9 +280,9 @@ async function loadDashboard() {
     `<td class="${x.pnl >= 0 ? 'pos' : 'neg'}">${x.pnl.toFixed(2)} ` +
     `(${x.pnl_pct != null ? (100*x.pnl_pct).toFixed(1) : '—'}%)</td></tr>`).join('');
   document.getElementById('holdings').innerHTML =
-    `<tr><th>Тікер</th><th>Кількість</th><th>Середня ціна</th>` +
-    `<th>Поточна ціна</th><th>Вартість</th><th>P/L</th></tr>` +
-    (rows || '<tr><td colspan=6>порожньо</td></tr>');
+    `<tr><th>${t('th_ticker')}</th><th>${t('th_quantity')}</th><th>${t('th_avg_price')}</th>` +
+    `<th>${t('th_current_price')}</th><th>${t('th_value')}</th><th>${t('th_pl')}</th></tr>` +
+    (rows || `<tr><td colspan=6>${t('holdings_empty')}</td></tr>`);
 
   const alloc = await j(`/api/portfolio/allocation?account_id=${id}`);
   const g = alloc.groups || {};
@@ -254,16 +299,16 @@ async function loadDashboard() {
   const end = new Date().toISOString().slice(0, 10);
   const hist = await j(`/api/portfolio/history?account_id=${id}&start=${startDate()}&end=${end}`);
   const datasets = [{
-    label: 'Вартість портфеля, ' + hist.currency,
+    label: t('series_portfolio') + hist.currency,
     data: hist.points.map(pt => pt.total), fill: false,
     borderColor: '#4f8cff', pointRadius: 3
   }];
   if (document.getElementById('benchToggle').checked) {
     try {
       const b = await j(`/api/portfolio/benchmark?account_id=${id}&start=${startDate()}&end=${end}&symbol=spy`);
-      datasets.push({ label: 'SPY (норм. 100)', data: b.points.map(pt => pt.benchmark),
+      datasets.push({ label: t('series_spy'), data: b.points.map(pt => pt.benchmark),
                       fill: false, borderColor: '#ffb347', borderDash: [6, 4], pointRadius: 2 });
-    } catch (e) { msg('Benchmark недоступний'); }
+    } catch (e) { msg(t('benchmark_unavailable')); }
   }
   if (chart) chart.destroy();
   chart = new Chart(document.getElementById('chart'), {
@@ -286,35 +331,35 @@ async function loadDividends(id, year) {
   const divs = await j(q);
   const sel = document.getElementById('divYear');
   if (!sel.options.length) {
-    sel.innerHTML = '<option value="">Усі роки</option>' +
+    sel.innerHTML = `<option value="">${t('div_all_years')}</option>` +
       (divs.years || []).map(y => `<option value="${y}">${y}</option>`).join('');
     if (year) sel.value = year;
   }
   document.getElementById('divTotal').textContent =
-    divs.year_total != null ? `— разом ${divs.year_total.toFixed(2)} ${divs.currency}` : '';
+    divs.year_total != null ? `${t('div_total')}${divs.year_total.toFixed(2)} ${divs.currency}` : '';
   const drows = (divs.months || []).map(m =>
     `<tr><td>${m.month}</td><td>${m.total.toFixed(2)} ${divs.currency}</td>` +
-    `<td>${Object.entries(m.tickers).map(([t, v]) => `${t}: ${v.toFixed(2)}`).join(', ')}</td></tr>`).join('');
+    `<td>${Object.entries(m.tickers).map(([tk, v]) => `${tk}: ${v.toFixed(2)}`).join(', ')}</td></tr>`).join('');
   document.getElementById('dividends').innerHTML =
-    `<tr><th>Місяць</th><th>Сума</th><th>По тікерах</th></tr>` +
-    (drows || '<tr><td colspan=3>дивідендів немає</td></tr>');
+    `<tr><th>${t('th_month')}</th><th>${t('th_amount')}</th><th>${t('th_by_tickers')}</th></tr>` +
+    (drows || `<tr><td colspan=3>${t('div_no_data')}</td></tr>`);
 }
 
 async function previewCsv() {
   const f = document.getElementById('csvfile').files[0];
-  if (!f) { msg('Оберіть CSV-файл'); return; }
+  if (!f) { msg(t('pick_csv_file')); return; }
   window._csvText = await f.text();
   const prev = await j('/api/import/preview', {
     method: 'POST', headers: {'content-type': 'application/json'},
     body: JSON.stringify({account_id: 0, csv_text: window._csvText}) });
-  if (!prev.columns) { msg('Не вдалося прочитати CSV: ' + JSON.stringify(prev)); return; }
+  if (!prev.columns) { msg(t('csv_parse_failed') + JSON.stringify(prev)); return; }
   document.getElementById('sampleTable').innerHTML =
     '<div class="table-wrap"><table><tr>' + prev.columns.map(c => `<th>${c}</th>`).join('') + '</tr>' +
     prev.sample.map(r => '<tr>' + r.map(c => `<td>${c}</td>`).join('') + '</tr>').join('') + '</table></div>';
-  const opts = col => '<option value="">— не мапити —</option>' +
+  const opts = col => `<option value="">${t('map_none')}</option>` +
     prev.columns.map(c => `<option value="${c}" ${c.toLowerCase() === col ? 'selected' : ''}>${c}</option>`).join('');
   document.getElementById('mapSelectors').innerHTML = CANON.map(c =>
-    `<label>${CANON_UA[c]} (${c})<br><select id="map_${c}">${opts(c)}</select></label>`).join('');
+    `<label>${t('canon_' + c)} (${c})<br><select id="map_${c}" aria-label="${t('canon_' + c)}">${opts(c)}</select></label>`).join('');
   const presetName = document.getElementById('presetSel').value;
   if (presetName) {
     try {
@@ -333,7 +378,7 @@ async function previewCsv() {
 
 async function doMappedImport() {
   const id = accId();
-  if (!id) { msg('Оберіть рахунок'); return; }
+  if (!id) { msg(t('pick_account')); return; }
   const presetName = document.getElementById('presetSel').value;
   const payload = {account_id: +id, csv_text: window._csvText};
   if (presetName) {
@@ -351,7 +396,7 @@ async function doMappedImport() {
     method: 'POST', headers: {'content-type': 'application/json'},
     body: JSON.stringify(payload) });
   const body = await r.json();
-  msg(r.ok ? `Імпортовано ${body.imported} транзакцій` : 'Помилка: ' + (body.detail || JSON.stringify(body)));
+  msg(r.ok ? fmt('imported_n', {n: body.imported}) : t('error_prefix') + (body.detail || JSON.stringify(body)));
   if (r.ok) reload();
 }
 
@@ -360,22 +405,22 @@ async function loadTax() {
   if (!id) return;
   const year = document.getElementById('taxYear').value;
   const method = document.getElementById('taxMethod').value;
-  const t = await j(`/api/tax/preview?account_id=${id}&year=${year}&method=${method}`);
-  const rows = (t.sales || []).map(s =>
+  const rep = await j(`/api/tax/preview?account_id=${id}&year=${year}&method=${method}`);
+  const rows = (rep.sales || []).map(s =>
     `<tr><td>${s.date}</td><td>${s.ticker}</td><td>${s.quantity}</td>` +
     `<td>${s.proceeds.toFixed(2)}</td><td>${s.cost_basis.toFixed(2)}</td>` +
     `<td class="${s.gain >= 0 ? 'pos' : 'neg'}">${s.gain.toFixed(2)}</td></tr>`).join('');
   document.getElementById('tax').innerHTML =
-    `<tr><th>Дата</th><th>Тікер</th><th>К-ть</th><th>Виторг</th>` +
-    `<th>Собівартість</th><th>Прибуток</th></tr>` +
-    (rows || '<tr><td colspan=6>продажів за рік немає</td></tr>') +
-    `<tr><th colspan=5>Разом (${t.method}, ${t.currency})</th>` +
-    `<th class="${t.total_gain >= 0 ? 'pos' : 'neg'}">${t.total_gain.toFixed(2)}</th></tr>`;
+    `<tr><th>${t('th_date')}</th><th>${t('th_ticker_short')}</th><th>${t('th_qty')}</th><th>${t('th_proceeds')}</th>` +
+    `<th>${t('th_cost_basis')}</th><th>${t('th_gain')}</th></tr>` +
+    (rows || `<tr><td colspan=6>${t('tax_empty')}</td></tr>`) +
+    `<tr><th colspan=5>${t('tax_total')} (${rep.method}, ${rep.currency})</th>` +
+    `<th class="${rep.total_gain >= 0 ? 'pos' : 'neg'}">${rep.total_gain.toFixed(2)}</th></tr>`;
 }
 
 function taxExport(format) {
   const id = accId();
-  if (!id) { msg('Оберіть рахунок'); return; }
+  if (!id) { msg(t('pick_account')); return; }
   const year = document.getElementById('taxYear').value;
   const method = document.getElementById('taxMethod').value;
   window.open(`/api/tax/export?account_id=${id}&year=${year}&method=${method}&format=${format}`, '_blank');
@@ -383,21 +428,21 @@ function taxExport(format) {
 
 function downloadBackup() {
   window.open('/api/backup', '_blank');
-  msg('Бекап завантажується…');
+  msg(t('backup_downloading'));
 }
 
 async function doRestore() {
   const f = document.getElementById('restoreFile').files[0];
-  if (!f) { msg('Оберіть файл бекапу (.db)'); return; }
-  if (!confirm('Відновлення ЗАМІНЮЄ поточну базу даних. Продовжити?')) return;
+  if (!f) { msg(t('pick_backup_file')); return; }
+  if (!confirm(t('restore_confirm'))) return;
   const data = await f.arrayBuffer();
   const r = await fetch('/api/restore', {method: 'POST', body: data});
   const body = await r.json();
   if (r.ok) {
-    msg(`Базу відновлено: ${body.transactions} транзакцій. Перезавантажте сторінку.`);
+    msg(fmt('restored_n', {n: body.transactions}));
     reload();
   } else {
-    msg('Помилка відновлення: ' + (body.detail || JSON.stringify(body)));
+    msg(t('restore_failed') + (body.detail || JSON.stringify(body)));
   }
 }
 
@@ -405,10 +450,10 @@ async function backfill() {
   const body = {ticker: document.getElementById('bfTicker').value.trim(),
                 start: document.getElementById('bfStart').value,
                 end: document.getElementById('bfEnd').value};
-  if (!body.ticker || !body.start || !body.end) { msg('Заповніть тікер і період'); return; }
+  if (!body.ticker || !body.start || !body.end) { msg(t('backfill_fill_fields')); return; }
   const r = await j('/api/prices/backfill', {
     method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(body)});
-  msg(r.error ? `Помилка: ${r.error}` : `Збережено ${r.stored} денних цін для ${r.ticker}`);
+  msg(r.error ? t('error_prefix') + r.error : fmt('backfill_stored', {n: r.stored, ticker: r.ticker}));
 }
 
 document.getElementById('periodBtns').addEventListener('click', e => {
@@ -422,7 +467,7 @@ document.getElementById('periodBtns').addEventListener('click', e => {
 document.getElementById('benchToggle').addEventListener('change', loadDashboard);
 document.querySelector('#periodBtns button[data-days="365"]').classList.add('active');
 
-loadAccounts().then(reload);
+loadLang().then(() => loadAccounts()).then(reload);
 
 // PWA: register the service worker for offline support (https/localhost only).
 if ("serviceWorker" in navigator) {
