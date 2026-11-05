@@ -1,5 +1,8 @@
 # folio-local
 
+[![CI](https://github.com/bigpi/folio-local/actions/workflows/tests.yml/badge.svg)](https://github.com/bigpi/folio-local/actions/workflows/tests.yml)
+![Python](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)
+
 Самохостинговий трекер інвестиційного портфеля з **коректною** фінансовою
 математикою (XIRR, TWR, мультивалютність). Python + FastAPI + SQLite.
 Жодних хмар: усі дані живуть у вашому локальному SQLite-файлі.
@@ -15,22 +18,39 @@
 - **Portfolio Performance** — точна математика, але desktop-only (Java),
   без web-доступу й мобільного перегляду.
 
-## Evidence (розмір ніші)
-
-- Ніша "finance" має **193 pay signals** на Market Gap Scanner — найвищий
-  показник готовності платити серед досліджених ніш.
-- 42% людей забувають про платні підписки (Capterra) — люди потребують
-  контролю над своїми грошима локально, без віддачі даних третім сторонам.
-
 ## Швидкий старт
 
 ```bash
+git clone https://github.com/bigpi/folio-local.git
+cd folio-local
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
-uvicorn backend.main:app --reload          # http://127.0.0.1:8000
-pytest                                     # математика під тестами
+uvicorn backend.main:app --reload                   # http://127.0.0.1:8000
+pytest                                              # математика під тестами
 ```
 
-### Базові запити
+Вимоги: Python 3.12+. Без Docker, без ключів API, без хмар.
+
+## Скріншоти
+
+| Дашборд | Імпорт CSV |
+|---|---|
+| ![Дашборд: вартість, P/L, XIRR, графік](docs/screenshot-dashboard.png) | ![Візард мапінгу колонок CSV](docs/screenshot-import.png) |
+
+> Плейсхолдери — додайте реальні скріншоти у `docs/` перед релізом.
+
+## Можливості (alpha, v0.1.0)
+
+- **Імпорт довільного брокерського CSV**: завантажте файл → попередній
+  перегляд колонок → зіставте їх з полями (дата/тікер/дія/кількість/ціна/
+  валюта) → імпорт. Підтримуються формати дати `YYYY-MM-DD`, `DD.MM.YYYY`,
+  `MM/DD/YYYY`, `YYYYMMDD` та інші; нормалізація значень дій (`Buy`→`buy`).
+- **Позиції за рахунком**: тікер, кількість, середня ціна, поточна вартість, P/L.
+- **Backfill історії цін** за діапазон дат (Stooq).
+- Портфель: вартість, P/L, XIRR, TWR, графік вартості (Chart.js).
+- Ціни: Stooq (акції/ETF), CoinGecko (крипта). Курси: ECB (безкоштовний XML).
+
+## Базові запити
 
 ```bash
 # рахунок
@@ -51,20 +71,31 @@ curl -X POST localhost:8000/api/transactions -H 'content-type: application/json'
 curl -X POST localhost:8000/api/prices/update -H 'content-type: application/json' \
   -d '["AAPL", "MSFT"]'
 
-# портфель: вартість, P/L, XIRR
-curl localhost:8000/api/portfolio?account_id=1
+# backfill історії цін за період
+curl -X POST localhost:8000/api/prices/backfill -H 'content-type: application/json' \
+  -d '{"ticker":"AAPL","start":"2024-01-01","end":"2024-06-30"}'
 
-# імпорт CSV (фіксовані колонки: date,ticker,action,quantity,price,currency[,fees,name,kind])
+# портфель і позиції
+curl localhost:8000/api/portfolio?account_id=1
+curl localhost:8000/api/holdings?account_id=1
+
+# імпорт: фіксовані колонки
 curl -X POST localhost:8000/api/import/csv -H 'content-type: application/json' \
   -d '{"account_id":1,"csv_text":"date,ticker,action,quantity,price,currency\n2024-01-01,,deposit,,1000,EUR"}'
+
+# імпорт: довільний CSV з мапінгом колонок
+curl -X POST localhost:8000/api/import/mapped -H 'content-type: application/json' \
+  -d '{"account_id":1,"csv_text":"TradeDate,Symbol,Side,Quantity,TradePrice,Currency\n20240115,AAPL,Buy,10,190.5,USD",
+       "mapping":{"date":"TradeDate","ticker":"Symbol","action":"Side","quantity":"Quantity","price":"TradePrice","currency":"Currency"},
+       "date_format":"YYYYMMDD","action_map":{"buy":"buy","sell":"sell"}}'
 ```
 
-UI: відкрийте http://127.0.0.1:8000/ — мінімальна сторінка з Chart.js
-(графік вартості портфеля, P/L, XIRR). Без build-степу.
+UI: відкрийте http://127.0.0.1:8000/ — дашборд (графік вартості, P/L, XIRR),
+таблиця позицій, візард імпорту CSV, backfill цін. Без build-степу.
 
 ## Що саме "правильного" в математиці
 
-1. **XIRR** — тільки зовнішні потоки (deposits відʼємні, withdrawals
+1. **XIRR** — тільки зовнішні потоки (deposits від'ємні, withdrawals
    додатні, поточна вартість додатною сьогодні). Buy/sell/dividend — це
    внутрішній рух і **не** потрапляє у XIRR-вхід.
 2. **TWR** — ланцюг підперіодів між датами зовнішніх потоків:
@@ -73,7 +104,18 @@ UI: відкрийте http://127.0.0.1:8000/ — мінімальна стор�
    за курсом ECB **на дату транзакції** (курси зберігаються з датою), а не
    за "сьогоднішнім" курсом — типова помилка, через яку ламається TWR.
 
+## Roadmap
+
+- [x] MVP: математика (XIRR/TWR/мультивалютність), API, фіксований CSV-імпорт, UI
+- [x] Alpha v0.1.0: CSV column-mapping UI, holdings за рахунком, backfill цін
+- [ ] Брокерські пресети (IBKR, Revolut, ...) для імпорту в один клік
+- [ ] Календар дивідендів
+- [ ] Розподіл активів (asset allocation)
+- [ ] Податковий звіт FIFO/LIFO (попередній перегляд реалізованих прибутків)
+- [ ] Крипто-транзакції з блокчейн-експлорерів
+- [ ] Класи активів: облігації, метали, нерухомість (ручна оцінка)
+
 ## Ліцензія
 
-MIT. Дані цін: Stooq (CSV, безкоштовно), CoinGecko (free tier), курси валют:
-ECB (безкоштовний XML, без ключа).
+MIT (див. [LICENSE](LICENSE)). Джерела даних: Stooq (CSV, безкоштовно),
+CoinGecko (free tier), курси валют — ECB (безкоштовний XML, без ключа).
