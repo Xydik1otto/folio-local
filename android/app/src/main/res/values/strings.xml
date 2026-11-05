@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">folio-local</string>
+    <string name="title_activity_main">folio-local</string>
+    <string name="package_name">io.github.xydik1otto.folio_local</string>
+    <string name="custom_url_scheme">io.github.xydik1otto.folio_local</string>
+</resources>
