@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from . import csv_import, fx as fxmod, portfolio, prices, report as report_mod
+from . import warnings as warnings_mod
 from .db import DB_PATH, account_transactions, connect, get_asset, upsert_asset
 
 app = FastAPI(title="folio-local", version="0.3.0",
@@ -388,6 +389,17 @@ def tax_export(account_id: int, year: int, method: str = "fifo",
     if fmt == "html":
         return HTMLResponse(report_mod.tax_html(report))
     raise HTTPException(400, "format must be 'csv' or 'html'")
+
+
+@app.get("/api/warnings")
+def warnings_panel(account_id: int, as_of: str | None = None):
+    """Панель попереджень: buy/sell без ціни, пропуски FX-курсів,
+    тікери без свіжих котирувань."""
+    conn = get_conn()
+    try:
+        return warnings_mod.collect_warnings(conn, account_id, as_of)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
 
 
 @app.post("/api/prices/backfill")
