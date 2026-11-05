@@ -4,6 +4,59 @@
 Формат — [Keep a Changelog](https://keepachangelog.com/uk/1.1.0/),
 версонування — [Semantic Versioning](https://semver.org/lang/uk/).
 
+## [1.0.0] — 2026-11-05
+
+«Готово для чужих користувачів»: сторонній користувач запускає проєкт за
+5 хвилин без знання коду.
+
+### Added
+- **Пресети ще 4 брокерів**: Trade Republic, DEGIRO, Fidelity і
+  Tinkoff-загальний формат CSV (англомовні заголовки; російської локалізації
+  в проєкті НЕМАЄ і не буде — політичне рішення власника). Разом з IBKR,
+  Revolut і generic — 7 пресетів (`GET /api/import/presets`). Новий формат
+  дати `DD-MM-YYYY`.
+- **Mobile PWA**: `static/manifest.webmanifest` (installable, standalone) +
+  service worker `static/sw.js` (офлайн-шелл: cache-first для статики,
+  API ніколи не кешується), мобільна responsive-верстка, шрифт ≥ 16px
+  на мобільних (без iOS-зуму).
+- **Сторінка «Облік без реєстрації»** (`/privacy`): privacy-first пояснення —
+  без реєстрації, без телеметрії, дані не залишають пристрій; без трекерів.
+- **Backup/restore БД одним кліком**: `GET /api/backup` (консистентний
+  snapshot через SQLite backup API) + `POST /api/restore` (валідація файлу
+  перед заміною живої бази; support попередження в UI).
+- **Експорт даних одним кліком**: `GET /api/export` — JSON (усі дані
+  рахунку: транзакції, активи, ціни, FX) або CSV у канонічному форматі,
+  який знову імпортується власним імпортером (круговий тест).
+- **First-run demo data**: кнопка «Завантажити демо-дані» (`POST
+  /api/demo-data`) — рахунок «Demo» з 10 транзакціями (акції, ETF, крипта,
+  дивіденди, депозити), idempotent (409 при повторі).
+- **i18n UA/EN перемикач у UI**: JSON-словники `static/i18n/{uk,en}.json`,
+  авто-детект мови браузера, збереження вибору в localStorage. Російської
+  локалізації не існує (і не з'явиться).
+- **README.en.md** — англійська версія README для міжнародної аудиторії.
+- **INSTALL.md** — покрокова інструкція для не-програміста: Windows
+  (`start.bat` — venv + залежності + сервер + браузер; автозапуск через
+  папку Startup), Linux (`start.sh`, systemd user unit
+  `scripts/folio-local.service`, enable-linger), оновлення, часті проблеми.
+- **Packaging**: `pyproject.toml` (v1.0.0 metadata, console-script
+  `folio-local`), перевірено `pip install -e .` у свіжому venv.
+- **OSS hygiene** (репозиторій піде в опенсорс): CONTRIBUTING.md,
+  SECURITY.md (приватне репортування вразливостей), issue-шаблони
+  (укр+англ в одному файлі), скан на витоки приватності (жодних абсолютних
+  шляхів/токенів — закріплено тестом), `.gitignore` покриває `.env`,
+  секція Contributing + рекомендовані GitHub topics в обох README.
+- **A11y**: aria-labels на всіх інтерактивних елементах, aria-live для
+  повідомлень, видимий фокус (`:focus-visible`).
+
+### Changed
+- Версія API піднята до 1.0.0.
+
+### Testing
+- 96 → 150 тестів (7 нових тест-файлів), уся математика й нові фічі під
+  тестами; тести не вимагають інтернету.
+
+[1.0.0]: https://github.com/bigpi/folio-local/releases/tag/v1.0.0
+
 ## [0.4.0] — 2026-11-05
 
 ### Added
