@@ -151,6 +151,41 @@ holdings table, CSV import wizard, price backfill. No build step.
    with their date), not at "today's" rate — the classic mistake that breaks
    TWR.
 
+## Native core (optional): .NET 10 accelerator
+
+The computationally critical math (XIRR Newton+bisection ACT/365, TWR,
+normalized benchmark series) is duplicated in a C# library,
+`dotnet/FolioCore` — an **exact** port of `backend/math_finance.py`: same
+formulas, same defaults (`lo=-0.9999, hi=10, tol=1e-10`), same error
+messages.
+
+- `backend/native_accel.py` locates the compiled `FolioCli` CLI (first
+  `$FOLIO_NATIVE`, then `dotnet/FolioCli/bin/Release/…/publish/`, then
+  `dotnet <FolioCli.dll>`), hands it a **batch of operations** in one call
+  (JSON on stdin → JSON on stdout) and returns the results.
+- If the executable/dotnet is unavailable or the native call fails —
+  **graceful fallback** to the pure-Python implementation; the app behaves
+  exactly as before, just slower.
+- The two implementations agree to a float tolerance of 1e-9, pinned by
+  comparative tests (`tests/test_native_accel.py`).
+
+Build (needs the .NET SDK 10; produces a ~70 MB self-contained exe, no
+runtime required):
+
+```bash
+scripts/build_native.sh        # Windows: scripts\build_native.bat
+```
+
+Measured (Ryzen laptop, `python scripts/benchmark_native.py`, 3 runs):
+
+| Scenario | Python | .NET core | speedup |
+|---|---:|---:|---:|
+| Single XIRR, 100,000 flows | 1522 ms | 519 ms | 2.9x |
+| 2,000 XIRR ops in one native call | 258 ms | 189 ms | 1.4x |
+
+The native core is an option, not a requirement: without it everything
+runs on Python.
+
 ## Roadmap
 
 - [x] MVP: math (XIRR/TWR/multi-currency), API, fixed CSV import, UI
@@ -164,6 +199,8 @@ holdings table, CSV import wizard, price backfill. No build step.
 - [x] v1.0.0: Trade Republic / DEGIRO / Fidelity / Tinkoff-format presets,
       mobile PWA, privacy page, one-click backup/restore, data export,
       UA/EN UI switcher, demo data, INSTALL.md, packaging
+- [x] Native computational core: C# .NET 10 port of XIRR/TWR/benchmark
+      (`dotnet/FolioCore`) + subprocess accelerator with graceful fallback
 - [ ] Crypto transactions from blockchain explorers
 - [ ] Asset classes: bonds, metals, real estate (manual valuation)
 - [ ] Basic auth / multi-user access

@@ -15,11 +15,13 @@ and exits non-zero instead of printing invented numbers.
 from __future__ import annotations
 
 import argparse
+import datetime as dt
+import pathlib
 import random
 import sys
 import time
 
-sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parent.parent))
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from backend import math_finance, native_accel  # noqa: E402
 
@@ -27,12 +29,12 @@ from backend import math_finance, native_accel  # noqa: E402
 def make_flows(n: int, seed: int = 42):
     """Deterministic 5-year transaction history with n external flows."""
     rng = random.Random(seed)
-    base = __import__("datetime").date(2020, 1, 1)
+    base = dt.date(2020, 1, 1)
     flows = []
     day = 0
     for i in range(n):
         day += i % 3  # a few flows share a date
-        d = base + __import__("datetime").timedelta(days=day % 1800)
+        d = base + dt.timedelta(days=day % 1800)
         if i % 4 == 3:
             amount = rng.uniform(50.0, 500.0)     # withdrawal
         else:
@@ -48,13 +50,13 @@ def make_small_flows(n_ops: int, seed: int = 7):
     """Deterministic small portfolios (7 deposits + closing valuation) —
     every one guaranteed to have a sign change, so XIRR always solves."""
     rng = random.Random(seed)
-    base = __import__("datetime").date(2020, 1, 1)
+    base = dt.date(2020, 1, 1)
     out = []
     for k in range(n_ops):
-        f = [(base + __import__("datetime").timedelta(days=k + i * 37),
+        f = [(base + dt.timedelta(days=k + i * 37),
               -rng.uniform(100.0, 1000.0)) for i in range(7)]
         total = -sum(a for _, a in f)
-        f.append((base + __import__("datetime").timedelta(days=k + 289),
+        f.append((base + dt.timedelta(days=k + 289),
                   total * rng.uniform(1.0, 1.8)))
         out.append(f)
     return out

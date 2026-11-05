@@ -4,6 +4,33 @@
 Формат — [Keep a Changelog](https://keepachangelog.com/uk/1.1.0/),
 версонування — [Semantic Versioning](https://semver.org/lang/uk/).
 
+## [Unreleased]
+
+### Added
+- **Нативне обчислювальне ядро (.NET 10, опціонально)**: `dotnet/FolioCore` —
+  точний порт `backend/math_finance.py` на C# (XIRR Newton+bisection ACT/365,
+  TWR, нормований benchmark-ряд; ті самі формули, значення за замовчуванням
+  і тексти помилок) + CLI-драйвер `FolioCli` (JSON на stdin → JSON на stdout,
+  пакет операцій одним викликом, single-file publish). Збірка —
+  `scripts/build_native.sh` / `.bat`.
+- **Subprocess-акселератор** `backend/native_accel.py`: знаходить exe
+  (`FOLIO_NATIVE` → `dotnet/FolioCli/bin/Release/…/publish/` → `dotnet` з
+  DLL), передає йому роботу пакетом; якщо exe/dotnet недоступний або впав —
+  graceful fallback на чисту Python-реалізацію. Результати двох реалізацій
+  ідентичні (float tolerance 1e-9) — закріплено порівняльними тестами
+  на edge-кейсах (від'ємні потоки, один потік, від'ємна дохідність,
+  відсутній/зламаний exe).
+
+### Changed
+- `portfolio_xirr`/`twr_series` тепер рахуються через `native_accel`
+  (нативно, коли ядро зібрано; інакше — як раніше, на Python).
+- `math_finance` отримав чисту функцію `normalized_benchmark` (нормований
+  benchmark-ряд без HTTP-обгортки).
+- У README (UA+EN) — розділ про нативне ядро з замірами: один XIRR на
+  100 000 потоків — 2.9x проти Python; 2 000 XIRR-операцій одним
+  native-викликом — 1.4x. Заміряється скриптом
+  `scripts/benchmark_native.py`.
+
 ## [1.0.0] — 2026-11-05
 
 «Готово для чужих користувачів»: сторонній користувач запускає проєкт за
