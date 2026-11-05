@@ -169,6 +169,17 @@ holdings table, CSV import wizard, price backfill. No build step.
 - [ ] Basic auth / multi-user access
 - [ ] One-step deploy script (no Docker)
 
+## Contributing
+
+PRs and issues are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md).
+Security issues: see [SECURITY.md](SECURITY.md) (report privately).
+
+## Suggested GitHub topics
+
+`portfolio-tracker` `self-hosted` `finance` `investments` `xirr` `twr`
+`fastapi` `sqlite` `python` `pwa` `privacy-first` `fintech` `broker-import`
+`dividends`
+
 ## License
 
 MIT (see [LICENSE](LICENSE)). Data sources: Stooq (CSV, free), CoinGecko

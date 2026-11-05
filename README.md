@@ -150,6 +150,19 @@ UI: відкрийте http://127.0.0.1:8000/ — дашборд (графік �
 - [ ] Basic auth / багатокористувацький доступ
 - [ ] Одношаговий деплой-скрипт (без Docker)
 
+## Contributing
+
+PRs and issues are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for
+environment setup, test running, and commit style. Security issues: see
+[SECURITY.md](SECURITY.md) (report privately, no public issues). The project
+is Ukrainian + English only — it will never include Russian localization.
+
+## Suggested GitHub topics
+
+`portfolio-tracker` `self-hosted` `finance` `investments` `xirr` `twr`
+`fastapi` `sqlite` `python` `pwa` `privacy-first` `fintech` `broker-import`
+`dividends`
+
 ## Ліцензія
 
 MIT (див. [LICENSE](LICENSE)). Джерела даних: Stooq (CSV, безкоштовно),
