@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "folio-local"
+version = "1.0.0"
+description = "Self-hosted investment portfolio tracker with correct financial math (XIRR, TWR, multi-currency). Data stays on your device."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "bigpi" }]
+keywords = ["portfolio", "investments", "xirr", "twr", "self-hosted", "finance"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Web Environment",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Office/Business :: Financial :: Investment",
+]
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn>=0.29",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.urls]
+Homepage = "https://github.com/bigpi/folio-local"
+Repository = "https://github.com/bigpi/folio-local"
+Changelog = "https://github.com/bigpi/folio-local/blob/master/CHANGELOG.md"
+
+[project.scripts]
+folio-local = "backend.main:run"
+
+[tool.setuptools]
+packages = ["backend"]
+
+[tool.setuptools.package-data]
+backend = ["py.typed"]

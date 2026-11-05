@@ -514,3 +514,10 @@ def privacy():
 
 
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+def run() -> None:
+    """Console-script entry point: `folio-local` starts the local server."""
+    import uvicorn
+    uvicorn.run(app, host="127.0.0.1",
+                port=int(os.environ.get("FOLIO_PORT", "8000")))
