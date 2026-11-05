@@ -13,7 +13,7 @@ REQUIRED = ["date", "ticker", "action", "quantity", "price", "currency"]
 OPTIONAL = ["fees", "name", "kind"]
 CANON_FIELDS = REQUIRED + OPTIONAL
 ACTIONS = {"buy", "sell", "dividend", "fee", "deposit", "withdrawal"}
-KINDS = {"stock", "etf", "crypto", "cash"}
+KINDS = {"stock", "etf", "crypto", "cash", "bond", "metal", "real_estate"}
 
 # Date formats accepted by the column-mapping importer (display name -> strptime).
 DATE_FORMATS = {

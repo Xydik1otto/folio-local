@@ -99,6 +99,7 @@ class TransactionIn(BaseModel):
     amount: float | None = None
     fees: float = 0.0
     currency: str = "EUR"
+    kind: str | None = None  # explicit asset class for a new ticker
     note: str | None = None
 
 
@@ -177,7 +178,10 @@ def add_transaction(body: TransactionIn):
             asset_id = asset["id"]
         else:
             t = body.ticker.upper()
-            if body.note == "crypto" or t in prices.KNOWN_COINS:
+            if body.kind in csv_import.KINDS:
+                kind, name = body.kind, (prices.KNOWN_COINS.get(t)
+                                         if body.kind == "crypto" else None)
+            elif body.note == "crypto" or t in prices.KNOWN_COINS:
                 kind, name = "crypto", prices.KNOWN_COINS.get(t)
             else:
                 kind, name = "stock", None
