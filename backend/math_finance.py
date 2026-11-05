@@ -103,3 +103,41 @@ def twr(valuations: Sequence[tuple[dt.date, float, float]]) -> float:
             raise ValueError(f"non-positive opening value on {d}")
         product *= (v - flow) / base
     return product - 1.0
+
+
+def normalized_benchmark(
+    port: Sequence[tuple[dt.date, float]],
+    bench: Sequence[tuple[dt.date, float]],
+) -> list[tuple[dt.date, float, float | None]]:
+    """Normalized comparison series: both indexed to 100 at the first date.
+
+    port: (date, portfolio_value) pairs; bench: (date, index close) pairs.
+    The benchmark is a step function: the last known close on or before each
+    portfolio date. Returns RAW normalized values — rounding to 2 decimals is
+    presentation and belongs to the caller (this keeps parity with the native
+    core, which also returns raw values; Python's round-half-even applies
+    uniformly in both paths).
+    """
+    port_pts = sorted((d, float(v)) for d, v in port)
+    bench_pts = sorted((d, float(v)) for d, v in bench)
+    if not port_pts:
+        raise ValueError("no portfolio valuation in range")
+
+    def bench_at(day: dt.date) -> float | None:
+        last = None
+        for bd, close in bench_pts:
+            if bd <= day:
+                last = close
+            else:
+                break
+        return last
+
+    d0, p0 = port_pts[0]
+    b0 = bench_at(d0)
+    if b0 is None or p0 <= 1e-9:
+        raise ValueError("cannot normalize benchmark series")
+    out: list[tuple[dt.date, float, float | None]] = []
+    for d, total in port_pts:
+        b = bench_at(d)
+        out.append((d, 100.0 * total / p0, None if b is None else 100.0 * b / b0))
+    return out

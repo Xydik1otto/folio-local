@@ -15,6 +15,7 @@ from collections import defaultdict
 
 from . import fx as fxmod
 from . import math_finance
+from . import native_accel
 from .db import account_transactions, latest_price
 
 
@@ -130,7 +131,7 @@ def portfolio_xirr(conn, account_id: int, as_of: str | None = None) -> float | N
     if val["total"] > 0:
         flows.append((dt.date.fromisoformat(end), val["total"]))
     try:
-        return math_finance.xirr(flows)
+        return native_accel.xirr(flows)
     except ValueError:
         return None
 
@@ -153,7 +154,7 @@ def twr_series(conn, account_id: int, start: str, end: str) -> float | None:
                                        if date_.isoformat() == d)
         pts.append((dt.date.fromisoformat(d), v, flow))
     try:
-        return math_finance.twr(pts)
+        return native_accel.twr(pts)
     except ValueError:
         return None
 
