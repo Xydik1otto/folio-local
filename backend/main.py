@@ -6,11 +6,11 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from . import csv_import, fx as fxmod, portfolio, prices
+from . import csv_import, fx as fxmod, portfolio, prices, report as report_mod
 from .db import DB_PATH, account_transactions, connect, get_asset, upsert_asset
 
 app = FastAPI(title="folio-local", version="0.3.0",
@@ -368,6 +368,26 @@ def tax_preview(account_id: int, year: int, method: str = "fifo"):
         return portfolio.realized_gains(conn, account_id, year, method)
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+@app.get("/api/tax/export")
+def tax_export(account_id: int, year: int, method: str = "fifo",
+               format: str = "csv"):
+    """Податковий звіт за рік: CSV-файл або друкована HTML-версія."""
+    conn = get_conn()
+    try:
+        report = portfolio.realized_gains(conn, account_id, year, method)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    fmt = format.lower()
+    if fmt == "csv":
+        return Response(
+            report_mod.tax_csv(report), media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition":
+                     f'attachment; filename="tax-{year}-{method}.csv"'})
+    if fmt == "html":
+        return HTMLResponse(report_mod.tax_html(report))
+    raise HTTPException(400, "format must be 'csv' or 'html'")
 
 
 @app.post("/api/prices/backfill")
