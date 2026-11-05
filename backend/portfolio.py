@@ -256,3 +256,25 @@ def dividend_summary(conn, account_id: int, year: int | None = None) -> dict:
             "by_ticker": {k: round(v, 2) for k, v in
                           sorted(by_ticker.items(), key=lambda x: -x[1])},
             "years": years}
+
+
+def allocation(conn, account_id: int, as_of: str | None = None) -> dict:
+    """Розподіл активів: вартість по класах активів (stock/etf/crypto/...)
+    + кеш, у валюті рахунку."""
+    val = value_on_date(conn, account_id, as_of or dt.date.today().isoformat())
+    base = val["currency"]
+    kinds: dict[str, float] = {}
+    for ticker, value in val["positions"].items():
+        row = conn.execute("SELECT kind FROM assets WHERE ticker = ?",
+                           (ticker,)).fetchone()
+        kind = (row["kind"] if row else "stock") or "stock"
+        kinds[kind] = kinds.get(kind, 0.0) + value
+    groups = {k: round(v, 2) for k, v in sorted(kinds.items(),
+                                                key=lambda x: -x[1])}
+    if val["cash"]:
+        groups["cash"] = round(groups.get("cash", 0.0) + val["cash"], 2)
+    total = val["total"]
+    return {"currency": base, "groups": groups,
+            "total": total,
+            "shares": {k: round(v / total, 6) for k, v in groups.items()}
+            if total > 1e-9 else {}}
