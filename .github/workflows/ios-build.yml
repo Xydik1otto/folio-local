@@ -1,0 +1,59 @@
+name: ios-build
+
+on:
+  push:
+    branches: [master, mobile/android-ios]
+    tags: ['v*']
+  pull_request:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install web deps
+        run: npm ci
+      - name: Sync Capacitor web assets
+        run: npx cap sync ios
+      - name: Install CocoaPods deps
+        run: |
+          cd ios/App
+          pod install --repo-update
+      # No Apple Developer certificate (paid): build unsigned, zip the .app.
+      # The artifact can be re-signed with AltStore/Sideloadly — see MOBILE.md.
+      - name: Build unsigned .app
+        run: |
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+      - name: Zip .app for AltStore/Sideloadly
+        run: |
+          APP_PATH=$(find ios/App/build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -n 1)
+          cd "$(dirname "$APP_PATH")"
+          mkdir -p Payload
+          cp -R "$(basename "$APP_PATH")" Payload/
+          zip -qry folio-local-unsigned.zip Payload
+          mkdir -p "$GITHUB_WORKSPACE/artifacts"
+          cp folio-local-unsigned.zip "$GITHUB_WORKSPACE/artifacts/"
+      - name: Upload unsigned .app zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: folio-local-ios-unsigned
+          path: artifacts/folio-local-unsigned.zip
+          retention-days: 30
+      - name: Attach to Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/folio-local-unsigned.zip
