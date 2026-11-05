@@ -12,4 +12,6 @@ build/
 *.egg-info/
 .DS_Store
 .venv*/
+dotnet/**/bin/
+dotnet/**/obj/
 

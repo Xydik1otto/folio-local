@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parent.parent
 TRACKED_EXTS = {".py", ".md", ".html", ".js", ".toml", ".json", ".bat",
                 ".sh", ".service", ".txt", ".cfg", ".yml", ".yaml", ".ini"}
 SKIP_DIRS = {".venv", "__pycache__", ".pytest_cache", ".git", "dist",
-             "build", "node_modules", "docs"}
+             "build", "node_modules", "docs", "bin", "obj"}
 
 
 def tracked_files():
