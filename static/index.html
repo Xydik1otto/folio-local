@@ -2,45 +2,103 @@
 <html lang="uk">
 <head>
 <meta charset="utf-8">
-<title>folio-local</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>folio-local — портфельний трекер</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
-  table { border-collapse: collapse; width: 100%; margin: .5rem 0; }
-  td, th { border: 1px solid #ccc; padding: .35rem .6rem; text-align: left; }
-  .pos { color: #0a7d28; } .neg { color: #c0392b; }
-  .cards { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0; }
-  .card { border: 1px solid #ccc; border-radius: 8px; padding: .8rem 1.2rem; }
-  .card b { display: block; font-size: 1.4rem; }
-  fieldset { border: 1px solid #ccc; border-radius: 8px; margin: 1rem 0; }
-  .wiz { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .5rem; }
-  label { display: block; font-size: .85rem; }
-  select, input { padding: .25rem; }
-  #msg { margin: .5rem 0; font-weight: 600; }
+:root {
+  --bg: #0f1420; --panel: #171e2e; --border: #2a3450;
+  --text: #dce3f2; --muted: #8a93a8; --accent: #4f8cff;
+  --pos: #34c77b; --neg: #ff5c69; --warn: #ffb347;
+}
+* { box-sizing: border-box; }
+body {
+  font-family: system-ui, sans-serif; max-width: 1100px; margin: 2rem auto;
+  padding: 0 1rem; background: var(--bg); color: var(--text);
+}
+h1, h2 { color: var(--text); }
+h2 { font-size: 1.15rem; margin-top: 2rem; }
+a { color: var(--accent); }
+table { border-collapse: collapse; width: 100%; margin: .5rem 0; }
+td, th { border: 1px solid var(--border); padding: .35rem .6rem; text-align: left; font-size: .92rem; }
+th { background: var(--panel); color: var(--muted); font-weight: 600; }
+tr:hover td { background: #1c2540; }
+.pos { color: var(--pos); } .neg { color: var(--neg); }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 1rem; margin: 1rem 0; }
+.card { border: 1px solid var(--border); border-radius: 10px; padding: .8rem 1.1rem; background: var(--panel); }
+.card b { display: block; font-size: 1.4rem; margin-top: .2rem; }
+.card small { color: var(--muted); }
+fieldset { border: 1px solid var(--border); border-radius: 10px; margin: 1rem 0; background: var(--panel); }
+.wiz { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .5rem; }
+label { display: block; font-size: .85rem; color: var(--muted); }
+select, input, button {
+  padding: .4rem .6rem; background: #10182b; color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; font-size: .95rem;
+}
+button { cursor: pointer; background: var(--accent); border-color: var(--accent); color: #fff; }
+button.ghost { background: transparent; color: var(--accent); }
+button.period { background: transparent; color: var(--muted); border-color: var(--border); }
+button.period.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+#msg { margin: .5rem 0; font-weight: 600; min-height: 1.2em; }
+#chartBox, #allocBox { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 1rem; margin: 1rem 0; }
+#allocBox { max-width: 460px; }
+.toolbar { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin: .6rem 0; }
+#warnPanel { border: 1px solid var(--border); border-radius: 10px; padding: .6rem 1rem; margin: 1rem 0; background: var(--panel); }
+#warnPanel.ok { border-color: var(--pos); }
+#warnPanel ul { margin: .4rem 0 0; padding-left: 1.2rem; }
+#warnPanel li { font-size: .9rem; margin: .2rem 0; }
+.badge { display: inline-block; border-radius: 999px; padding: .1rem .6rem; font-size: .78rem; font-weight: 700; }
+.badge.error { background: var(--neg); color: #fff; }
+.badge.warning { background: var(--warn); color: #222; }
+@media (max-width: 640px) {
+  body { margin: 1rem auto; }
+  .card b { font-size: 1.1rem; }
+  h1 { font-size: 1.3rem; }
+}
 </style>
 </head>
 <body>
 <h1>folio-local</h1>
 <p>Самохостинговий портфельний трекер. Дані — тільки у вашій SQLite.</p>
 
+<div id="warnPanel" class="ok"><b>Попередження</b> <span id="warnCount">—</span><ul id="warnList"></ul></div>
+
 <div class="cards" id="cards"></div>
-<canvas id="chart" height="90"></canvas>
+
+<div id="chartBox">
+  <div class="toolbar">
+    <b>Вартість портфеля</b>
+    <span id="periodBtns">
+      <button class="period" data-days="30">1М</button>
+      <button class="period" data-days="90">3М</button>
+      <button class="period" data-days="180">6М</button>
+      <button class="period" data-days="365">1Р</button>
+      <button class="period" data-days="0">Всі</button>
+    </span>
+    <label style="display:inline"><input type="checkbox" id="benchToggle"> лінія SPY</label>
+    <select id="accountSel" onchange="reload()"></select>
+  </div>
+  <canvas id="chart" height="110"></canvas>
+</div>
 
 <h2>Позиції (holdings)</h2>
-<table id="holdings"></table>
+<div class="table-wrap"><table id="holdings"></table></div>
 
 <h2>Розподіл активів</h2>
-<canvas id="alloc" width="300" height="180" style="max-width:420px"></canvas>
+<div id="allocBox"><canvas id="alloc" width="300" height="200"></canvas></div>
+
+<h2>Попередження</h2>
+<p style="color:var(--muted)">Зведення проблемних даних — панель угорі сторінки (GET /api/warnings).</p>
 
 <h2>Дивіденди <select id="divYear" onchange="loadDividends()"></select>
 <span id="divTotal" style="font-size:.9rem"></span></h2>
-<table id="dividends"></table>
+<div class="table-wrap"><table id="dividends"></table></div>
 
 <h2>Імпорт CSV (довільний брокерський файл)</h2>
 <fieldset>
   <legend>Крок 1 — файл і рахунок</legend>
   <input type="file" id="csvfile" accept=".csv,text/csv">
-  <select id="accountSel"></select>
   <select id="presetSel"><option value="">Пресет брокера: ні</option></select>
   <button onclick="previewCsv()">Попередній перегляд</button>
 </fieldset>
@@ -62,14 +120,16 @@
 </fieldset>
 <p id="msg"></p>
 
-<h2>Податковий прев'ю (FIFO/LIFO)</h2>
+<h2>Податковий звіт (FIFO/LIFO)</h2>
 <fieldset>
   <legend>Реалізовані прибутки за рік</legend>
   <input id="taxYear" type="number" value="2024" min="2000" max="2100">
   <select id="taxMethod"><option value="fifo">FIFO</option><option value="lifo">LIFO</option></select>
   <button onclick="loadTax()">Порахувати</button>
+  <button class="ghost" onclick="taxExport('csv')">CSV</button>
+  <button class="ghost" onclick="taxExport('html')">HTML (друк)</button>
 </fieldset>
-<table id="tax"></table>
+<div class="table-wrap"><table id="tax"></table></div>
 
 <h2>Історія цін (backfill)</h2>
 <fieldset>
@@ -83,9 +143,16 @@
 const CANON = ['date','ticker','action','quantity','price','currency','fees','name','kind'];
 const CANON_UA = {date:'Дата', ticker:'Тікер', action:'Дія', quantity:'Кількість',
   price:'Ціна', currency:'Валюта', fees:'Комісія', name:'Назва', kind:'Тип активу'};
+let chart = null, allocChart = null, periodDays = 365;
 
 async function j(url, opts) { const r = await fetch(url, opts); return r.json(); }
 function msg(t) { document.getElementById('msg').textContent = t; }
+function accId() { return document.getElementById('accountSel').value; }
+function startDate() {
+  if (!periodDays) return '2000-01-01';
+  const d = new Date(Date.now() - periodDays * 864e5);
+  return d.toISOString().slice(0, 10);
+}
 
 async function loadAccounts() {
   const acc = await j('/api/accounts');
@@ -100,22 +167,38 @@ async function loadAccounts() {
   } catch (e) { /* старий бекенд без пресетів */ }
 }
 
-async function load() {
-  const acc = await j('/api/accounts');
-  if (!acc.length) {
+async function reload() { await Promise.all([loadDashboard(), loadWarnings()]); }
+
+async function loadWarnings() {
+  const id = accId();
+  const panel = document.getElementById('warnPanel');
+  const list = document.getElementById('warnList');
+  const count = document.getElementById('warnCount');
+  if (!id) { list.innerHTML = ''; count.textContent = ''; return; }
+  try {
+    const w = await j(`/api/warnings?account_id=${id}`);
+    count.textContent = w.count ? `${w.count}` : 'немає ✓';
+    panel.className = w.count ? '' : 'ok';
+    list.innerHTML = w.warnings.map(x =>
+      `<li><span class="badge ${x.severity}">${x.severity}</span> ${x.message}</li>`).join('');
+  } catch (e) { list.innerHTML = ''; count.textContent = '—'; }
+}
+
+async function loadDashboard() {
+  const id = accId();
+  if (!id) {
     document.getElementById('cards').innerHTML = '<p>Немає рахунків. Створіть через POST /api/accounts.</p>';
     return;
   }
-  const accId = acc[0].id;
-  const p = await j(`/api/portfolio?account_id=${accId}`);
+  const p = await j(`/api/portfolio?account_id=${id}`);
   const xirr = p.xirr == null ? '—' : (100 * p.xirr).toFixed(2) + '%';
   document.getElementById('cards').innerHTML =
-    `<div class="card">Вартість<b>${p.total.toFixed(2)} ${p.currency}</b></div>` +
-    `<div class="card">P/L<b class="${p.pnl >= 0 ? 'pos' : 'neg'}">${p.pnl.toFixed(2)}</b></div>` +
-    `<div class="card">XIRR<b>${xirr}</b></div>` +
-    `<div class="card">Кеш<b>${p.cash.toFixed(2)}</b></div>`;
+    `<div class="card"><small>Вартість</small><b>${p.total.toFixed(2)} ${p.currency}</b></div>` +
+    `<div class="card"><small>P/L</small><b class="${p.pnl >= 0 ? 'pos' : 'neg'}">${p.pnl.toFixed(2)}</b></div>` +
+    `<div class="card"><small>XIRR</small><b>${xirr}</b></div>` +
+    `<div class="card"><small>Кеш</small><b>${p.cash.toFixed(2)}</b></div>`;
 
-  const h = await j(`/api/holdings?account_id=${accId}`);
+  const h = await j(`/api/holdings?account_id=${id}`);
   const rows = (h.holdings || []).map(x =>
     `<tr><td>${x.ticker}</td><td>${x.quantity}</td>` +
     `<td>${x.avg_price.toFixed(2)} ${x.currency}</td>` +
@@ -128,31 +211,50 @@ async function load() {
     `<th>Поточна ціна</th><th>Вартість</th><th>P/L</th></tr>` +
     (rows || '<tr><td colspan=6>порожньо</td></tr>');
 
-  const alloc = await j(`/api/portfolio/allocation?account_id=${accId}`);
+  const alloc = await j(`/api/portfolio/allocation?account_id=${id}`);
   const g = alloc.groups || {};
-  new Chart(document.getElementById('alloc'), {
+  if (allocChart) allocChart.destroy();
+  allocChart = new Chart(document.getElementById('alloc'), {
     type: 'doughnut',
-    data: { labels: Object.keys(g), datasets: [{ data: Object.values(g) }] }
+    data: { labels: Object.keys(g), datasets: [{ data: Object.values(g) }] },
+    options: { plugins: { legend: { labels: { color: '#dce3f2' } } } }
   });
 
   const divYear = document.getElementById('divYear').value;
-  loadDividends(accId, divYear);
+  loadDividends(+id, divYear);
 
-  const hist = await j(`/api/portfolio/history?account_id=${accId}&start=2000-01-01&end=2099-01-01`);
-  new Chart(document.getElementById('chart'), {
+  const end = new Date().toISOString().slice(0, 10);
+  const hist = await j(`/api/portfolio/history?account_id=${id}&start=${startDate()}&end=${end}`);
+  const datasets = [{
+    label: 'Вартість портфеля, ' + hist.currency,
+    data: hist.points.map(pt => pt.total), fill: false,
+    borderColor: '#4f8cff', pointRadius: 3
+  }];
+  if (document.getElementById('benchToggle').checked) {
+    try {
+      const b = await j(`/api/portfolio/benchmark?account_id=${id}&start=${startDate()}&end=${end}&symbol=spy`);
+      datasets.push({ label: 'SPY (норм. 100)', data: b.points.map(pt => pt.benchmark),
+                      fill: false, borderColor: '#ffb347', borderDash: [6, 4], pointRadius: 2 });
+    } catch (e) { msg('Benchmark недоступний'); }
+  }
+  if (chart) chart.destroy();
+  chart = new Chart(document.getElementById('chart'), {
     type: 'line',
-    data: {
-      labels: hist.points.map(pt => pt.date),
-      datasets: [{ label: 'Вартість портфеля, ' + hist.currency,
-                   data: hist.points.map(pt => pt.total), fill: false }]
+    data: { labels: hist.points.map(pt => pt.date), datasets },
+    options: {
+      plugins: { legend: { labels: { color: '#dce3f2' } } },
+      scales: {
+        x: { ticks: { color: '#8a93a8' } },
+        y: { ticks: { color: '#8a93a8' } }
+      }
     }
   });
 }
 
-async function loadDividends(accId, year) {
-  accId = accId || (await j('/api/accounts'))[0]?.id;
-  if (!accId) return;
-  const q = `/api/dividends?account_id=${accId}` + (year ? `&year=${year}` : '');
+async function loadDividends(id, year) {
+  id = id || +accId();
+  if (!id) return;
+  const q = `/api/dividends?account_id=${id}` + (year ? `&year=${year}` : '');
   const divs = await j(q);
   const sel = document.getElementById('divYear');
   if (!sel.options.length) {
@@ -179,13 +281,12 @@ async function previewCsv() {
     body: JSON.stringify({account_id: 0, csv_text: window._csvText}) });
   if (!prev.columns) { msg('Не вдалося прочитати CSV: ' + JSON.stringify(prev)); return; }
   document.getElementById('sampleTable').innerHTML =
-    '<table><tr>' + prev.columns.map(c => `<th>${c}</th>`).join('') + '</tr>' +
-    prev.sample.map(r => '<tr>' + r.map(c => `<td>${c}</td>`).join('') + '</tr>').join('') + '</table>';
+    '<div class="table-wrap"><table><tr>' + prev.columns.map(c => `<th>${c}</th>`).join('') + '</tr>' +
+    prev.sample.map(r => '<tr>' + r.map(c => `<td>${c}</td>`).join('') + '</tr>').join('') + '</table></div>';
   const opts = col => '<option value="">— не мапити —</option>' +
     prev.columns.map(c => `<option value="${c}" ${c.toLowerCase() === col ? 'selected' : ''}>${c}</option>`).join('');
   document.getElementById('mapSelectors').innerHTML = CANON.map(c =>
     `<label>${CANON_UA[c]} (${c})<br><select id="map_${c}">${opts(c)}</select></label>`).join('');
-  // застосувати пресет брокера, якщо обрано
   const presetName = document.getElementById('presetSel').value;
   if (presetName) {
     try {
@@ -203,10 +304,10 @@ async function previewCsv() {
 }
 
 async function doMappedImport() {
-  const accId = document.getElementById('accountSel').value;
-  if (!accId) { msg('Оберіть рахунок'); return; }
+  const id = accId();
+  if (!id) { msg('Оберіть рахунок'); return; }
   const presetName = document.getElementById('presetSel').value;
-  const payload = {account_id: +accId, csv_text: window._csvText};
+  const payload = {account_id: +id, csv_text: window._csvText};
   if (presetName) {
     payload.preset = presetName;
   } else {
@@ -223,15 +324,15 @@ async function doMappedImport() {
     body: JSON.stringify(payload) });
   const body = await r.json();
   msg(r.ok ? `Імпортовано ${body.imported} транзакцій` : 'Помилка: ' + (body.detail || JSON.stringify(body)));
-  if (r.ok) load();
+  if (r.ok) reload();
 }
 
 async function loadTax() {
-  const acc = await j('/api/accounts');
-  if (!acc.length) return;
+  const id = accId();
+  if (!id) return;
   const year = document.getElementById('taxYear').value;
   const method = document.getElementById('taxMethod').value;
-  const t = await j(`/api/tax/preview?account_id=${acc[0].id}&year=${year}&method=${method}`);
+  const t = await j(`/api/tax/preview?account_id=${id}&year=${year}&method=${method}`);
   const rows = (t.sales || []).map(s =>
     `<tr><td>${s.date}</td><td>${s.ticker}</td><td>${s.quantity}</td>` +
     `<td>${s.proceeds.toFixed(2)}</td><td>${s.cost_basis.toFixed(2)}</td>` +
@@ -244,6 +345,14 @@ async function loadTax() {
     `<th class="${t.total_gain >= 0 ? 'pos' : 'neg'}">${t.total_gain.toFixed(2)}</th></tr>`;
 }
 
+function taxExport(format) {
+  const id = accId();
+  if (!id) { msg('Оберіть рахунок'); return; }
+  const year = document.getElementById('taxYear').value;
+  const method = document.getElementById('taxMethod').value;
+  window.open(`/api/tax/export?account_id=${id}&year=${year}&method=${method}&format=${format}`, '_blank');
+}
+
 async function backfill() {
   const body = {ticker: document.getElementById('bfTicker').value.trim(),
                 start: document.getElementById('bfStart').value,
@@ -254,8 +363,18 @@ async function backfill() {
   msg(r.error ? `Помилка: ${r.error}` : `Збережено ${r.stored} денних цін для ${r.ticker}`);
 }
 
-loadAccounts();
-load();
+document.getElementById('periodBtns').addEventListener('click', e => {
+  const b = e.target.closest('button.period');
+  if (!b) return;
+  document.querySelectorAll('button.period').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  periodDays = +b.dataset.days;
+  loadDashboard();
+});
+document.getElementById('benchToggle').addEventListener('change', loadDashboard);
+document.querySelector('#periodBtns button[data-days="365"]').classList.add('active');
+
+loadAccounts().then(reload);
 </script>
 </body>
 </html>
