@@ -1,0 +1,23 @@
+# systemd user unit for folio-local.
+# Install:
+#   mkdir -p ~/.config/systemd/user
+#   cp scripts/folio-local.service ~/.config/systemd/user/
+#   # edit /opt/folio-local to your actual project path
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now folio-local
+# Logs: journalctl --user -u folio-local -f
+
+[Unit]
+Description=folio-local portfolio tracker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/folio-local
+ExecStart=/opt/folio-local/.venv/bin/uvicorn backend.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
