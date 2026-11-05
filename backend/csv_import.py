@@ -194,3 +194,47 @@ def import_mapped(conn, account_id: int, text: str, mapping: dict[str, str],
     """Import an arbitrary CSV using the user's column mapping."""
     canonical = apply_mapping(text, mapping, date_format, action_map)
     return import_csv(conn, account_id, canonical)
+
+
+# --- broker presets (one-click import templates) ------------------------------
+# Each preset is a starting template: columns the UI pre-selects when they
+# match the uploaded file. Users can still adjust the mapping manually.
+
+PRESETS: dict[str, dict] = {
+    "ibkr_trades": {
+        "label": "Interactive Brokers — Trades (flex/CSV)",
+        "mapping": {"date": "TradeDate", "ticker": "Symbol", "action": "Side",
+                    "quantity": "Quantity", "price": "TradePrice",
+                    "currency": "Currency", "fees": "Commission"},
+        "date_format": "YYYYMMDD",
+        "action_map": {"buy": "buy", "sell": "sell", "bought": "buy",
+                       "sold": "sell"},
+    },
+    "revolut_stocks": {
+        "label": "Revolut — Stocks & ETFs export",
+        "mapping": {"date": "Date", "ticker": "Ticker", "action": "Type",
+                    "quantity": "Quantity", "price": "Price per share",
+                    "currency": "Currency", "fees": "Fees"},
+        "date_format": "YYYY-MM-DD",
+        "action_map": {"buy": "buy", "sell": "sell", "dividend": "dividend"},
+    },
+    "generic": {
+        "label": "folio-local канонічний (date,ticker,action,...)",
+        "mapping": {c: c for c in REQUIRED},
+        "date_format": None,
+        "action_map": None,
+    },
+}
+
+
+def preset_by_name(name: str) -> dict:
+    if name not in PRESETS:
+        raise ImportRowError(f"unknown preset {name!r}; "
+                             f"one of {', '.join(sorted(PRESETS))}")
+    return PRESETS[name]
+
+
+def import_with_preset(conn, account_id: int, text: str, preset: str) -> int:
+    p = preset_by_name(preset)
+    return import_mapped(conn, account_id, text, p["mapping"],
+                         p["date_format"], p["action_map"])

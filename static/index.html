@@ -40,6 +40,7 @@
   <legend>Крок 1 — файл і рахунок</legend>
   <input type="file" id="csvfile" accept=".csv,text/csv">
   <select id="accountSel"></select>
+  <select id="presetSel"><option value="">Пресет брокера: ні</option></select>
   <button onclick="previewCsv()">Попередній перегляд</button>
 </fieldset>
 <fieldset id="step2" hidden>
@@ -81,6 +82,12 @@ async function loadAccounts() {
   document.getElementById('accountSel').innerHTML =
     acc.map(a => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join('')
     || '<option value="">— немає рахунків —</option>';
+  try {
+    const presets = await j('/api/import/presets');
+    document.getElementById('presetSel').innerHTML =
+      '<option value="">Пресет брокера: ні</option>' +
+      presets.map(p => `<option value="${p.name}">${p.label}</option>`).join('');
+  } catch (e) { /* старий бекенд без пресетів */ }
 }
 
 async function load() {
@@ -152,22 +159,42 @@ async function previewCsv() {
     prev.columns.map(c => `<option value="${c}" ${c.toLowerCase() === col ? 'selected' : ''}>${c}</option>`).join('');
   document.getElementById('mapSelectors').innerHTML = CANON.map(c =>
     `<label>${CANON_UA[c]} (${c})<br><select id="map_${c}">${opts(c)}</select></label>`).join('');
+  // застосувати пресет брокера, якщо обрано
+  const presetName = document.getElementById('presetSel').value;
+  if (presetName) {
+    try {
+      const preset = (await j('/api/import/presets')).find(p => p.name === presetName);
+      if (preset) {
+        for (const [c, col] of Object.entries(preset.mapping || {})) {
+          const sel = document.getElementById('map_' + c);
+          if (sel && [...sel.options].some(o => o.value === col)) sel.value = col;
+        }
+        if (preset.date_format) document.getElementById('dateFormat').value = preset.date_format;
+      }
+    } catch (e) { /* ігноруємо */ }
+  }
   document.getElementById('step2').hidden = false;
 }
 
 async function doMappedImport() {
   const accId = document.getElementById('accountSel').value;
   if (!accId) { msg('Оберіть рахунок'); return; }
-  const mapping = {};
-  for (const c of CANON) {
-    const v = document.getElementById('map_' + c).value;
-    if (v) mapping[c] = v;
+  const presetName = document.getElementById('presetSel').value;
+  const payload = {account_id: +accId, csv_text: window._csvText};
+  if (presetName) {
+    payload.preset = presetName;
+  } else {
+    const mapping = {};
+    for (const c of CANON) {
+      const v = document.getElementById('map_' + c).value;
+      if (v) mapping[c] = v;
+    }
+    payload.mapping = mapping;
+    payload.date_format = document.getElementById('dateFormat').value || null;
   }
-  const df = document.getElementById('dateFormat').value || null;
   const r = await fetch('/api/import/mapped', {
     method: 'POST', headers: {'content-type': 'application/json'},
-    body: JSON.stringify({account_id: +accId, csv_text: window._csvText,
-                          mapping, date_format: df}) });
+    body: JSON.stringify(payload) });
   const body = await r.json();
   msg(r.ok ? `Імпортовано ${body.imported} транзакцій` : 'Помилка: ' + (body.detail || JSON.stringify(body)));
   if (r.ok) load();

@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from . import csv_import, fx as fxmod, portfolio, prices
 from .db import DB_PATH, account_transactions, connect, get_asset, upsert_asset
 
-app = FastAPI(title="folio-local", version="0.1.0",
+app = FastAPI(title="folio-local", version="0.2.0",
               description="Self-hosted portfolio tracker with correct TWR/XIRR math")
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
@@ -57,9 +57,10 @@ class ImportIn(BaseModel):
 class ImportMappedIn(BaseModel):
     account_id: int
     csv_text: str
-    mapping: dict[str, str]          # canonical field -> CSV column header
+    mapping: dict[str, str] | None = None  # canonical field -> CSV column header
     date_format: str | None = None   # see csv_import.DATE_FORMATS
     action_map: dict[str, str] | None = None  # raw action -> canonical action
+    preset: str | None = None        # broker preset (overrides mapping)
 
 
 class BackfillIn(BaseModel):
@@ -235,13 +236,30 @@ def import_preview(body: ImportIn):
         raise HTTPException(400, str(e))
 
 
+@app.get("/api/import/presets")
+def import_presets():
+    """Known broker CSV templates: {name, label, mapping, date_format}."""
+    return [{"name": name, **{k: v for k, v in p.items()}}
+            for name, p in csv_import.PRESETS.items()]
+
+
 @app.post("/api/import/mapped")
 def import_mapped(body: ImportMappedIn):
-    """Import an arbitrary broker CSV using a user-supplied column mapping."""
+    """Import an arbitrary broker CSV using a user-supplied column mapping
+    or a broker preset."""
     conn = get_conn()
     if not conn.execute("SELECT 1 FROM accounts WHERE id = ?",
                         (body.account_id,)).fetchone():
         raise HTTPException(404, "account not found")
+    if body.preset:
+        try:
+            n = csv_import.import_with_preset(conn, body.account_id,
+                                              body.csv_text, body.preset)
+        except csv_import.ImportRowError as e:
+            raise HTTPException(400, str(e))
+        return {"imported": n, "preset": body.preset}
+    if not body.mapping:
+        raise HTTPException(400, "provide 'mapping' or 'preset'")
     try:
         n = csv_import.import_mapped(conn, body.account_id, body.csv_text,
                                      body.mapping, body.date_format,
