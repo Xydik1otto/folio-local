@@ -1,0 +1,20 @@
+{
+  "name": "folio-local",
+  "short_name": "folio",
+  "description": "Self-hosted portfolio tracker: XIRR, TWR, multi-currency. Data stays on your device.",
+  "lang": "uk",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f1420",
+  "theme_color": "#0f1420",
+  "icons": [
+    {
+      "src": "/static/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

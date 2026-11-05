@@ -4,6 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+<link rel="manifest" href="/static/manifest.webmanifest">
+<meta name="theme-color" content="#0f1420">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
 <meta property="og:title" content="folio-local — портфельний трекер">
 <meta property="og:description" content="Самохостинговий трекер інвестиційного портфеля з коректною фінансовою математикою (XIRR, TWR, мультивалютність). Дані — тільки у вашій SQLite.">
 <meta property="og:type" content="website">
@@ -60,7 +65,13 @@ button.period.active { background: var(--accent); color: #fff; border-color: var
   body { margin: 1rem auto; }
   .card b { font-size: 1.1rem; }
   h1 { font-size: 1.3rem; }
+  .toolbar { gap: .35rem; }
+  select, input, button { font-size: 1rem; }   /* >= 16px: без iOS-зуму при фокусі */
+  .cards { grid-template-columns: repeat(2, 1fr); }
+  fieldset { padding: .6rem; }
+  canvas { max-width: 100%; }
 }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 </style>
 </head>
 <body>
@@ -381,6 +392,13 @@ document.getElementById('benchToggle').addEventListener('change', loadDashboard)
 document.querySelector('#periodBtns button[data-days="365"]').classList.add('active');
 
 loadAccounts().then(reload);
+
+// PWA: register the service worker for offline support (https/localhost only).
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () =>
+    navigator.serviceWorker.register("/static/sw.js", { scope: "/" })
+      .catch(() => { /* SW optional: plain HTTP host simply skips it */ }));
+}
 </script>
 </body>
 </html>
