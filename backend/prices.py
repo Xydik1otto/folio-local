@@ -8,6 +8,17 @@ import urllib.request
 
 STOOQ_URL = "https://stooq.com/q/d/l/?s={symbol}&i=d"
 COINGECKO_URL = "https://api.coingecko.com/api/v3/simple/price?ids={ids}&vs_currencies=usd"
+COINGECKO_HISTORY_URL = ("https://api.coingecko.com/api/v3/coins/{coin_id}/history"
+                         "?date={dmy}&localization=false")
+
+# Well-known crypto tickers -> CoinGecko coin ids (free API, no key).
+KNOWN_COINS = {
+    "BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana", "XRP": "ripple",
+    "ADA": "cardano", "DOGE": "dogecoin", "LTC": "litecoin",
+    "BCH": "bitcoin-cash", "DOT": "polkadot", "LINK": "chainlink",
+    "AVAX": "avalanche-2", "MATIC": "matic-network", "TON": "the-open-network",
+    "SHIB": "shiba-inu", "TRX": "tron",
+}
 
 
 def fetch_stooq_latest(symbol: str) -> tuple[str, float] | None:
@@ -89,18 +100,72 @@ def fetch_stooq_history(symbol: str, start: str | None = None,
     return out
 
 
+def coin_id_for(conn, ticker: str) -> str | None:
+    """Resolve a CoinGecko coin id: the asset's name column, else KNOWN_COINS."""
+    from .db import get_asset
+    ticker = ticker.upper()
+    row = get_asset(conn, ticker)
+    if row and row["kind"] == "crypto" and row["name"]:
+        return row["name"]
+    return KNOWN_COINS.get(ticker)
+
+
+def fetch_coingecko_history(coin_id: str, date: str) -> tuple[str, float] | None:
+    """Close price (USD) of `coin_id` on `date` (YYYY-MM-DD) via the free
+    CoinGecko history endpoint, or None on failure/no data."""
+    import json
+    y, m, d = date.split("-")
+    url = COINGECKO_HISTORY_URL.format(coin_id=coin_id, dmy=f"{d}-{m}-{y}")
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "folio-local/0.4"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except (OSError, ValueError):
+        return None
+    try:
+        return date, float(data["market_data"]["current_price"]["usd"])
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def backfill_crypto(conn, ticker: str, start: str, end: str) -> dict:
+    """Store daily USD snapshots for a crypto ticker over [start, end] using
+    the CoinGecko history endpoint (one request per day, free tier)."""
+    import datetime as _dt
+    coin_id = coin_id_for(conn, ticker)
+    if not coin_id:
+        return {"ticker": ticker.upper(), "start": start, "end": end, "stored": 0,
+                "error": f"unknown CoinGecko coin id for {ticker.upper()}"}
+    from .db import store_price
+    stored = 0
+    day = _dt.date.fromisoformat(start)
+    end_d = _dt.date.fromisoformat(end)
+    while day <= end_d:
+        quote = fetch_coingecko_history(coin_id, day.isoformat())
+        if quote:
+            store_price(conn, ticker.upper(), quote[0], quote[1], "USD")
+            stored += 1
+        day += _dt.timedelta(days=1)
+    return {"ticker": ticker.upper(), "start": start, "end": end, "stored": stored}
+
+
 def backfill_prices(conn, ticker: str, start: str, end: str) -> dict:
-    """Store daily snapshots for `ticker` over [start, end]. Stooq only
-    (crypto range backfill needs a keyed source — not in scope)."""
+    """Store daily snapshots for `ticker` over [start, end]: Stooq for
+    stocks/ETFs, CoinGecko history for crypto (free, no key)."""
     import datetime as _dt
     _dt.date.fromisoformat(start)
     _dt.date.fromisoformat(end)
+    from .db import get_asset, store_price
+    ticker = ticker.upper()
+    row = get_asset(conn, ticker)
+    if (row and row["kind"] == "crypto") or (row is None and ticker in KNOWN_COINS):
+        return backfill_crypto(conn, ticker, start, end)
     try:
         quotes = fetch_stooq_history(ticker.lower(), start, end)
     except OSError as e:
-        return {"ticker": ticker, "stored": 0, "error": f"fetch failed: {e}"}
-    from .db import store_price
+        return {"ticker": ticker, "start": start, "end": end,
+                "stored": 0, "error": f"fetch failed: {e}"}
     for date, price in quotes:
-        store_price(conn, ticker.upper(), date, price, "USD")
-    return {"ticker": ticker.upper(), "start": start, "end": end,
+        store_price(conn, ticker, date, price, "USD")
+    return {"ticker": ticker, "start": start, "end": end,
             "stored": len(quotes)}

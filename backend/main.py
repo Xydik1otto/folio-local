@@ -118,8 +118,12 @@ def add_transaction(body: TransactionIn):
         if asset:
             asset_id = asset["id"]
         else:
-            kind = "crypto" if body.type in ("buy", "sell") and body.note == "crypto" else "stock"
-            asset_id = upsert_asset(conn, body.ticker.upper(), None, kind, body.currency)
+            t = body.ticker.upper()
+            if body.note == "crypto" or t in prices.KNOWN_COINS:
+                kind, name = "crypto", prices.KNOWN_COINS.get(t)
+            else:
+                kind, name = "stock", None
+            asset_id = upsert_asset(conn, t, name, kind, body.currency)
     with conn:
         cur = conn.execute(
             "INSERT INTO transactions(account_id, asset_id, type, date, quantity,"
