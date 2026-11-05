@@ -32,7 +32,8 @@
 <h2>Розподіл активів</h2>
 <canvas id="alloc" width="300" height="180" style="max-width:420px"></canvas>
 
-<h2>Дивіденди</h2>
+<h2>Дивіденди <select id="divYear" onchange="loadDividends()"></select>
+<span id="divTotal" style="font-size:.9rem"></span></h2>
 <table id="dividends"></table>
 
 <h2>Імпорт CSV (довільний брокерський файл)</h2>
@@ -125,13 +126,8 @@ async function load() {
     data: { labels: Object.keys(g), datasets: [{ data: Object.values(g) }] }
   });
 
-  const divs = await j(`/api/dividends?account_id=${accId}`);
-  const drows = (divs.months || []).map(m =>
-    `<tr><td>${m.month}</td><td>${m.total.toFixed(2)} ${divs.currency}</td>` +
-    `<td>${Object.entries(m.tickers).map(([t, v]) => `${t}: ${v.toFixed(2)}`).join(', ')}</td></tr>`).join('');
-  document.getElementById('dividends').innerHTML =
-    `<tr><th>Місяць</th><th>Сума</th><th>По тікерах</th></tr>` +
-    (drows || '<tr><td colspan=3>дивідендів немає</td></tr>');
+  const divYear = document.getElementById('divYear').value;
+  loadDividends(accId, divYear);
 
   const hist = await j(`/api/portfolio/history?account_id=${accId}&start=2000-01-01&end=2099-01-01`);
   new Chart(document.getElementById('chart'), {
@@ -142,6 +138,27 @@ async function load() {
                    data: hist.points.map(pt => pt.total), fill: false }]
     }
   });
+}
+
+async function loadDividends(accId, year) {
+  accId = accId || (await j('/api/accounts'))[0]?.id;
+  if (!accId) return;
+  const q = `/api/dividends?account_id=${accId}` + (year ? `&year=${year}` : '');
+  const divs = await j(q);
+  const sel = document.getElementById('divYear');
+  if (!sel.options.length) {
+    sel.innerHTML = '<option value="">Усі роки</option>' +
+      (divs.years || []).map(y => `<option value="${y}">${y}</option>`).join('');
+    if (year) sel.value = year;
+  }
+  document.getElementById('divTotal').textContent =
+    divs.year_total != null ? `— разом ${divs.year_total.toFixed(2)} ${divs.currency}` : '';
+  const drows = (divs.months || []).map(m =>
+    `<tr><td>${m.month}</td><td>${m.total.toFixed(2)} ${divs.currency}</td>` +
+    `<td>${Object.entries(m.tickers).map(([t, v]) => `${t}: ${v.toFixed(2)}`).join(', ')}</td></tr>`).join('');
+  document.getElementById('dividends').innerHTML =
+    `<tr><th>Місяць</th><th>Сума</th><th>По тікерах</th></tr>` +
+    (drows || '<tr><td colspan=3>дивідендів немає</td></tr>');
 }
 
 async function previewCsv() {

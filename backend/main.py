@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 from . import csv_import, fx as fxmod, portfolio, prices
 from .db import DB_PATH, account_transactions, connect, get_asset, upsert_asset
 
-app = FastAPI(title="folio-local", version="0.2.0",
+app = FastAPI(title="folio-local", version="0.2.1",
               description="Self-hosted portfolio tracker with correct TWR/XIRR math")
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
@@ -275,6 +275,16 @@ def get_holdings(account_id: int, as_of: str | None = None):
     conn = get_conn()
     try:
         return portfolio.holdings(conn, account_id, as_of)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/dividends")
+def dividends(account_id: int, year: int | None = None):
+    """Дивідендний календар: суми за місяцями й тікерами."""
+    conn = get_conn()
+    try:
+        return portfolio.dividend_summary(conn, account_id, year)
     except ValueError as e:
         raise HTTPException(400, str(e))
 

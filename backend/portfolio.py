@@ -213,3 +213,46 @@ def holdings(conn, account_id: int, as_of: str | None = None) -> dict:
         })
     rows.sort(key=lambda r: -r["current_value"])
     return {"as_of": as_of, "currency": base, "holdings": rows}
+
+
+def dividend_summary(conn, account_id: int, year: int | None = None) -> dict:
+    """Дивідендний календар: отримані дивіденди за місяцями й тікерами.
+
+    Суми конвертуються у валюту рахунку за курсом на дату виплати.
+    """
+    account = conn.execute("SELECT * FROM accounts WHERE id = ?",
+                           (account_id,)).fetchone()
+    if account is None:
+        raise ValueError(f"account {account_id} not found")
+    base = account["currency"].upper()
+
+    months: dict[str, dict] = {}
+    by_ticker: dict[str, float] = {}
+    year_total = 0.0
+    for t in account_transactions(conn, account_id):
+        if t["type"] != "dividend":
+            continue
+        if year is not None and not t["date"].startswith(str(year)):
+            continue
+        amount = _to_account_ccy(conn, t["amount"] or 0.0, t["currency"].upper(),
+                                 t["date"], base)
+        month = t["date"][:7]
+        m = months.setdefault(month, {"month": month, "total": 0.0,
+                                      "tickers": {}})
+        tk = t["ticker"] or "—"
+        m["total"] += amount
+        m["tickers"][tk] = m["tickers"].get(tk, 0.0) + amount
+        by_ticker[tk] = by_ticker.get(tk, 0.0) + amount
+        year_total += amount
+
+    for m in months.values():
+        m["total"] = round(m["total"], 2)
+        m["tickers"] = {k: round(v, 2) for k, v in m["tickers"].items()}
+    years = sorted({t["date"][:4] for t in account_transactions(conn, account_id)
+                    if t["type"] == "dividend"}, reverse=True)
+    return {"currency": base, "year": year,
+            "year_total": round(year_total, 2),
+            "months": [months[k] for k in sorted(months)],
+            "by_ticker": {k: round(v, 2) for k, v in
+                          sorted(by_ticker.items(), key=lambda x: -x[1])},
+            "years": years}
