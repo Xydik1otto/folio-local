@@ -221,6 +221,63 @@ def portfolio_twr(account_id: int, start: str, end: str):
     return {"start": start, "end": end, "twr": t}
 
 
+@app.get("/api/portfolio/benchmark")
+def portfolio_benchmark(account_id: int, start: str, end: str, symbol: str = "spy"):
+    """Вартість портфеля проти benchmark-індекса (SPY за замовчуванням).
+
+    Обидві серії нормовані на 100 на першій спільній даті — «а що якби
+    просто купив індекс». Дані benchmark — Stooq (free, без ключа).
+    """
+    conn = get_conn()
+    try:
+        dt.date.fromisoformat(start)
+        dt.date.fromisoformat(end)
+    except ValueError:
+        raise HTTPException(400, "start/end must be YYYY-MM-DD")
+    if not conn.execute("SELECT 1 FROM accounts WHERE id = ?", (account_id,)).fetchone():
+        raise HTTPException(404, "account not found")
+    _, events = portfolio.ledger(conn, account_id)
+    dates = sorted({e["date"] for e in events if start <= e["date"] <= end} | {start, end})
+    port: list[tuple[str, float]] = []
+    for d in dates:
+        try:
+            port.append((d, portfolio.value_on_date(conn, account_id, d)["total"]))
+        except ValueError:
+            continue
+    if not port:
+        raise HTTPException(400, "no portfolio valuation in range")
+    bench_symbol = symbol if "." in symbol else f"{symbol.lower()}.us"
+    try:
+        bench = sorted(prices.fetch_stooq_history(bench_symbol, start, end))
+    except OSError as e:
+        raise HTTPException(502, f"benchmark fetch failed: {e}")
+    if not bench:
+        raise HTTPException(404, f"no benchmark data for {symbol}")
+
+    def bench_at(day: str) -> float | None:
+        last = None
+        for bd, close in bench:
+            if bd <= day:
+                last = close
+            else:
+                break
+        return last
+
+    d0, p0 = port[0]
+    b0 = bench_at(d0)
+    if b0 is None or p0 <= 1e-9:
+        raise HTTPException(400, "cannot normalize benchmark series")
+    points = [{"date": d,
+               "portfolio": round(100 * total / p0, 2),
+               "benchmark": round(100 * b / b0, 2) if (b := bench_at(d)) is not None else None}
+              for d, total in port]
+    return {"symbol": bench_symbol.upper(), "start": start, "end": end,
+            "currency": conn.execute(
+                "SELECT currency FROM accounts WHERE id = ?",
+                (account_id,)).fetchone()["currency"],
+            "points": points}
+
+
 @app.post("/api/import/csv")
 def import_csv(body: ImportIn):
     conn = get_conn()
