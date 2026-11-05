@@ -173,6 +173,11 @@ button.period.active { background: var(--accent); color: #fff; border-color: var
   <button class="ghost" onclick="exportData('csv')" data-i18n="btn_export_csv">CSV (транзакції)</button>
 </fieldset>
 
+<fieldset>
+  <legend data-i18n="demo_legend">Перший запуск</legend>
+  <button onclick="loadDemo()" data-i18n="btn_demo">Завантажити демо-дані</button>
+</fieldset>
+
 <h2 data-i18n="sec_backfill">Історія цін (backfill)</h2>
 <fieldset>
   <legend data-i18n="backfill_legend">Stooq: завантажити денні ціни за період</legend>
@@ -436,6 +441,20 @@ function exportData(format) {
   const id = accId();
   if (!id) { msg(t('pick_account')); return; }
   window.open(`/api/export?account_id=${id}&format=${format}`, '_blank');
+}
+
+async function loadDemo() {
+  const r = await j('/api/demo-data', {method: 'POST'});
+  if (r.created != null) {
+    msg(fmt('demo_done', {n: r.created}));
+    await loadAccounts();
+    document.getElementById('accountSel').value =
+      [...document.getElementById('accountSel').options]
+        .find(o => o.textContent.startsWith('Demo'))?.value || '';
+    await reload();
+  } else {
+    msg(t('demo_exists'));
+  }
 }
 
 function downloadBackup() {

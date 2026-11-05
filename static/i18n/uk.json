@@ -60,6 +60,7 @@
   "btn_demo": "Завантажити демо-дані",
   "demo_done": "Демо-дані створено: рахунок «Demo», {n} транзакцій",
   "demo_exists": "Демо-рахунок уже існує",
+  "demo_legend": "Перший запуск",
   "sec_backfill": "Історія цін (backfill)",
   "backfill_legend": "Stooq: завантажити денні ціни за період",
   "btn_backfill": "Backfill",

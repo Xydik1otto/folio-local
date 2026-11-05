@@ -60,6 +60,7 @@
   "btn_demo": "Load demo data",
   "demo_done": "Demo data created: account «Demo», {n} transactions",
   "demo_exists": "Demo account already exists",
+  "demo_legend": "First run",
   "sec_backfill": "Price history (backfill)",
   "backfill_legend": "Stooq: fetch daily prices for a period",
   "btn_backfill": "Backfill",

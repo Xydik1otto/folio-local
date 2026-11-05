@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from . import csv_import, fx as fxmod, portfolio, prices, report as report_mod
 from . import warnings as warnings_mod
 from . import backup as backup_mod
+from . import demo as demo_mod
 from .db import DB_PATH, account_transactions, connect, get_asset, upsert_asset
 
 app = FastAPI(title="folio-local", version="0.4.0",
@@ -409,6 +410,16 @@ def warnings_panel(account_id: int, as_of: str | None = None):
         return warnings_mod.collect_warnings(conn, account_id, as_of)
     except ValueError as e:
         raise HTTPException(400, str(e))
+
+
+@app.post("/api/demo-data")
+def create_demo_data():
+    """First-run experience: opt-in демо-дані (рахунок «Demo» + транзакції)."""
+    conn = get_conn()
+    if demo_mod.demo_data_exists(conn):
+        raise HTTPException(409, "demo account already exists")
+    n = demo_mod.load_demo_data(db_path())
+    return {"created": n, "account": demo_mod.DEMO_ACCOUNT}
 
 
 @app.get("/api/export")
