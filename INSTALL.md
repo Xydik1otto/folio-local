@@ -108,6 +108,17 @@ sudo loginctl enable-linger $USER
 Корисні команди: `systemctl --user restart folio-local`,
 `journalctl --user -u folio-local -f` (логи).
 
+### Альтернатива: деплой одним скриптом (без Docker)
+
+```bash
+./scripts/deploy-local.sh                 # venv + залежності + база + сервер
+./scripts/deploy-local.sh --install-only  # тільки підготувати, сервер не запускати
+FOLIO_HOST=0.0.0.0 FOLIO_PORT=8080 ./scripts/deploy-local.sh
+```
+
+Скрипт створює `.venv`, ставить `requirements.txt`, ініціалізує `folio.db`
+і запускає `uvicorn backend.main:app` — добре пасує до systemd-юніта вище.
+
 ---
 
 ## Оновлення
