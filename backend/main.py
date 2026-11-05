@@ -54,6 +54,20 @@ class ImportIn(BaseModel):
     csv_text: str
 
 
+class ImportMappedIn(BaseModel):
+    account_id: int
+    csv_text: str
+    mapping: dict[str, str]          # canonical field -> CSV column header
+    date_format: str | None = None   # see csv_import.DATE_FORMATS
+    action_map: dict[str, str] | None = None  # raw action -> canonical action
+
+
+class BackfillIn(BaseModel):
+    ticker: str
+    start: str
+    end: str
+
+
 # --- API ---------------------------------------------------------------------
 
 @app.get("/api/health")
@@ -210,6 +224,51 @@ def import_csv(body: ImportIn):
     except csv_import.ImportRowError as e:
         raise HTTPException(400, str(e))
     return {"imported": n}
+
+
+@app.post("/api/import/preview")
+def import_preview(body: ImportIn):
+    """Column headers + sample rows, so the UI can render the mapping wizard."""
+    try:
+        return csv_import.csv_columns(body.csv_text)
+    except csv_import.ImportRowError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/import/mapped")
+def import_mapped(body: ImportMappedIn):
+    """Import an arbitrary broker CSV using a user-supplied column mapping."""
+    conn = get_conn()
+    if not conn.execute("SELECT 1 FROM accounts WHERE id = ?",
+                        (body.account_id,)).fetchone():
+        raise HTTPException(404, "account not found")
+    try:
+        n = csv_import.import_mapped(conn, body.account_id, body.csv_text,
+                                     body.mapping, body.date_format,
+                                     body.action_map)
+    except csv_import.ImportRowError as e:
+        raise HTTPException(400, str(e))
+    return {"imported": n}
+
+
+@app.get("/api/holdings")
+def get_holdings(account_id: int, as_of: str | None = None):
+    """Позиції рахунку: кількість, середня ціна, поточна вартість, P/L."""
+    conn = get_conn()
+    try:
+        return portfolio.holdings(conn, account_id, as_of)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.post("/api/prices/backfill")
+def backfill(body: BackfillIn):
+    """Store daily price snapshots for a ticker over a date range (Stooq)."""
+    conn = get_conn()
+    try:
+        return prices.backfill_prices(conn, body.ticker, body.start, body.end)
+    except ValueError:
+        raise HTTPException(400, "start/end must be YYYY-MM-DD")
 
 
 @app.get("/")

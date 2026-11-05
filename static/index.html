@@ -5,13 +5,18 @@
 <title>folio-local</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
-  table { border-collapse: collapse; width: 100%; }
+  body { font-family: system-ui, sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; }
+  table { border-collapse: collapse; width: 100%; margin: .5rem 0; }
   td, th { border: 1px solid #ccc; padding: .35rem .6rem; text-align: left; }
   .pos { color: #0a7d28; } .neg { color: #c0392b; }
   .cards { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0; }
   .card { border: 1px solid #ccc; border-radius: 8px; padding: .8rem 1.2rem; }
   .card b { display: block; font-size: 1.4rem; }
+  fieldset { border: 1px solid #ccc; border-radius: 8px; margin: 1rem 0; }
+  .wiz { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .5rem; }
+  label { display: block; font-size: .85rem; }
+  select, input { padding: .25rem; }
+  #msg { margin: .5rem 0; font-weight: 600; }
 </style>
 </head>
 <body>
@@ -21,18 +26,71 @@
 <div class="cards" id="cards"></div>
 <canvas id="chart" height="90"></canvas>
 
-<h2>Позиції</h2>
-<table id="positions"></table>
+<h2>Позиції (holdings)</h2>
+<table id="holdings"></table>
+
+<h2>Розподіл активів</h2>
+<canvas id="alloc" width="300" height="180" style="max-width:420px"></canvas>
+
+<h2>Дивіденди</h2>
+<table id="dividends"></table>
+
+<h2>Імпорт CSV (довільний брокерський файл)</h2>
+<fieldset>
+  <legend>Крок 1 — файл і рахунок</legend>
+  <input type="file" id="csvfile" accept=".csv,text/csv">
+  <select id="accountSel"></select>
+  <button onclick="previewCsv()">Попередній перегляд</button>
+</fieldset>
+<fieldset id="step2" hidden>
+  <legend>Крок 2 — зіставлення колонок</legend>
+  <div id="sampleTable"></div>
+  <div class="wiz" id="mapSelectors"></div>
+  <label>Формат дати:
+    <select id="dateFormat">
+      <option value="">YYYY-MM-DD (авто)</option>
+      <option value="DD.MM.YYYY">DD.MM.YYYY</option>
+      <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+      <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+      <option value="YYYYMMDD">YYYYMMDD</option>
+      <option value="YYYY/MM/DD">YYYY/MM/DD</option>
+    </select>
+  </label>
+  <button onclick="doMappedImport()">Імпортувати</button>
+</fieldset>
+<p id="msg"></p>
+
+<h2>Історія цін (backfill)</h2>
+<fieldset>
+  <legend>Stooq: завантажити денні ціни за період</legend>
+  <input id="bfTicker" placeholder="AAPL">
+  <input id="bfStart" type="date"> — <input id="bfEnd" type="date">
+  <button onclick="backfill()">Backfill</button>
+</fieldset>
 
 <script>
+const CANON = ['date','ticker','action','quantity','price','currency','fees','name','kind'];
+const CANON_UA = {date:'Дата', ticker:'Тікер', action:'Дія', quantity:'Кількість',
+  price:'Ціна', currency:'Валюта', fees:'Комісія', name:'Назва', kind:'Тип активу'};
+
+async function j(url, opts) { const r = await fetch(url, opts); return r.json(); }
+function msg(t) { document.getElementById('msg').textContent = t; }
+
+async function loadAccounts() {
+  const acc = await j('/api/accounts');
+  document.getElementById('accountSel').innerHTML =
+    acc.map(a => `<option value="${a.id}">${a.name} (${a.currency})</option>`).join('')
+    || '<option value="">— немає рахунків —</option>';
+}
+
 async function load() {
-  const acc = await (await fetch('/api/accounts')).json();
+  const acc = await j('/api/accounts');
   if (!acc.length) {
     document.getElementById('cards').innerHTML = '<p>Немає рахунків. Створіть через POST /api/accounts.</p>';
     return;
   }
   const accId = acc[0].id;
-  const p = await (await fetch(`/api/portfolio?account_id=${accId}`)).json();
+  const p = await j(`/api/portfolio?account_id=${accId}`);
   const xirr = p.xirr == null ? '—' : (100 * p.xirr).toFixed(2) + '%';
   document.getElementById('cards').innerHTML =
     `<div class="card">Вартість<b>${p.total.toFixed(2)} ${p.currency}</b></div>` +
@@ -40,21 +98,92 @@ async function load() {
     `<div class="card">XIRR<b>${xirr}</b></div>` +
     `<div class="card">Кеш<b>${p.cash.toFixed(2)}</b></div>`;
 
-  const rows = Object.entries(p.positions || {}).map(([t, v]) =>
-    `<tr><td>${t}</td><td>${v.toFixed(2)} ${p.currency}</td></tr>`).join('');
-  document.getElementById('positions').innerHTML =
-    `<tr><th>Тікер</th><th>Вартість</th></tr>` + (rows || '<tr><td colspan=2>порожньо</td></tr>');
+  const h = await j(`/api/holdings?account_id=${accId}`);
+  const rows = (h.holdings || []).map(x =>
+    `<tr><td>${x.ticker}</td><td>${x.quantity}</td>` +
+    `<td>${x.avg_price.toFixed(2)} ${x.currency}</td>` +
+    `<td>${x.current_price.toFixed(2)}</td>` +
+    `<td>${x.current_value.toFixed(2)} ${x.currency}</td>` +
+    `<td class="${x.pnl >= 0 ? 'pos' : 'neg'}">${x.pnl.toFixed(2)} ` +
+    `(${x.pnl_pct != null ? (100*x.pnl_pct).toFixed(1) : '—'}%)</td></tr>`).join('');
+  document.getElementById('holdings').innerHTML =
+    `<tr><th>Тікер</th><th>Кількість</th><th>Середня ціна</th>` +
+    `<th>Поточна ціна</th><th>Вартість</th><th>P/L</th></tr>` +
+    (rows || '<tr><td colspan=6>порожньо</td></tr>');
 
-  const h = await (await fetch(`/api/portfolio/history?account_id=${accId}&start=2000-01-01&end=2099-01-01`)).json();
+  const alloc = await j(`/api/portfolio/allocation?account_id=${accId}`);
+  const g = alloc.groups || {};
+  new Chart(document.getElementById('alloc'), {
+    type: 'doughnut',
+    data: { labels: Object.keys(g), datasets: [{ data: Object.values(g) }] }
+  });
+
+  const divs = await j(`/api/dividends?account_id=${accId}`);
+  const drows = (divs.months || []).map(m =>
+    `<tr><td>${m.month}</td><td>${m.total.toFixed(2)} ${divs.currency}</td>` +
+    `<td>${Object.entries(m.tickers).map(([t, v]) => `${t}: ${v.toFixed(2)}`).join(', ')}</td></tr>`).join('');
+  document.getElementById('dividends').innerHTML =
+    `<tr><th>Місяць</th><th>Сума</th><th>По тікерах</th></tr>` +
+    (drows || '<tr><td colspan=3>дивідендів немає</td></tr>');
+
+  const hist = await j(`/api/portfolio/history?account_id=${accId}&start=2000-01-01&end=2099-01-01`);
   new Chart(document.getElementById('chart'), {
     type: 'line',
     data: {
-      labels: h.points.map(pt => pt.date),
-      datasets: [{ label: 'Вартість портфеля, ' + h.currency,
-                   data: h.points.map(pt => pt.total), fill: false }]
+      labels: hist.points.map(pt => pt.date),
+      datasets: [{ label: 'Вартість портфеля, ' + hist.currency,
+                   data: hist.points.map(pt => pt.total), fill: false }]
     }
   });
 }
+
+async function previewCsv() {
+  const f = document.getElementById('csvfile').files[0];
+  if (!f) { msg('Оберіть CSV-файл'); return; }
+  window._csvText = await f.text();
+  const prev = await j('/api/import/preview', {
+    method: 'POST', headers: {'content-type': 'application/json'},
+    body: JSON.stringify({account_id: 0, csv_text: window._csvText}) });
+  if (!prev.columns) { msg('Не вдалося прочитати CSV: ' + JSON.stringify(prev)); return; }
+  document.getElementById('sampleTable').innerHTML =
+    '<table><tr>' + prev.columns.map(c => `<th>${c}</th>`).join('') + '</tr>' +
+    prev.sample.map(r => '<tr>' + r.map(c => `<td>${c}</td>`).join('') + '</tr>').join('') + '</table>';
+  const opts = col => '<option value="">— не мапити —</option>' +
+    prev.columns.map(c => `<option value="${c}" ${c.toLowerCase() === col ? 'selected' : ''}>${c}</option>`).join('');
+  document.getElementById('mapSelectors').innerHTML = CANON.map(c =>
+    `<label>${CANON_UA[c]} (${c})<br><select id="map_${c}">${opts(c)}</select></label>`).join('');
+  document.getElementById('step2').hidden = false;
+}
+
+async function doMappedImport() {
+  const accId = document.getElementById('accountSel').value;
+  if (!accId) { msg('Оберіть рахунок'); return; }
+  const mapping = {};
+  for (const c of CANON) {
+    const v = document.getElementById('map_' + c).value;
+    if (v) mapping[c] = v;
+  }
+  const df = document.getElementById('dateFormat').value || null;
+  const r = await fetch('/api/import/mapped', {
+    method: 'POST', headers: {'content-type': 'application/json'},
+    body: JSON.stringify({account_id: +accId, csv_text: window._csvText,
+                          mapping, date_format: df}) });
+  const body = await r.json();
+  msg(r.ok ? `Імпортовано ${body.imported} транзакцій` : 'Помилка: ' + (body.detail || JSON.stringify(body)));
+  if (r.ok) load();
+}
+
+async function backfill() {
+  const body = {ticker: document.getElementById('bfTicker').value.trim(),
+                start: document.getElementById('bfStart').value,
+                end: document.getElementById('bfEnd').value};
+  if (!body.ticker || !body.start || !body.end) { msg('Заповніть тікер і період'); return; }
+  const r = await j('/api/prices/backfill', {
+    method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(body)});
+  msg(r.error ? `Помилка: ${r.error}` : `Збережено ${r.stored} денних цін для ${r.ticker}`);
+}
+
+loadAccounts();
 load();
 </script>
 </body>

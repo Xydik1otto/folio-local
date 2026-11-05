@@ -156,3 +156,60 @@ def twr_series(conn, account_id: int, start: str, end: str) -> float | None:
         return math_finance.twr(pts)
     except ValueError:
         return None
+
+
+def holdings(conn, account_id: int, as_of: str | None = None) -> dict:
+    """Per-account positions: quantity, average cost, current value, P/L.
+
+    Cost basis is accumulated in the ACCOUNT currency using the FX rate on
+    each transaction date; the current value uses the rate on `as_of`
+    (default today). Sells reduce cost proportionally (average-cost method).
+    """
+    account, events = ledger(conn, account_id)
+    base = account["currency"].upper()
+    as_of = as_of or dt.date.today().isoformat()
+
+    pos: dict[str, dict] = {}
+    for e in events:
+        if e["date"] > as_of or e["type"] not in ("buy", "sell") or not e["ticker"]:
+            continue
+        qty = e["quantity"] or 0.0
+        total = (e["quantity"] or 0.0) * (e["price"] or 0.0) + (e["fees"] or 0.0)
+        total_base = _to_account_ccy(conn, total, e["currency"], e["date"], base)
+        p = pos.setdefault(e["ticker"], {"qty": 0.0, "cost": 0.0})
+        if e["type"] == "buy":
+            p["qty"] += qty
+            p["cost"] += total_base
+        else:
+            if p["qty"] <= 1e-12:
+                continue  # sell without a prior tracked buy (e.g. transferred in)
+            frac = min(qty / p["qty"], 1.0)
+            p["cost"] -= p["cost"] * frac
+            p["qty"] -= qty
+            if abs(p["qty"]) < 1e-12:
+                pos[e["ticker"]] = {"qty": 0.0, "cost": 0.0}
+
+    rates = _rate(conn, as_of) or {"EUR": 1.0}
+    rows = []
+    for ticker, p in pos.items():
+        if abs(p["qty"]) < 1e-9:
+            continue
+        snap = latest_price(conn, ticker, as_of)
+        if snap is None:
+            raise ValueError(f"no price snapshot for {ticker} on or before {as_of}")
+        px_base = fxmod.convert(snap["price"], snap["currency"], base, rates)
+        value = p["qty"] * px_base
+        avg = p["cost"] / p["qty"]
+        rows.append({
+            "ticker": ticker,
+            "quantity": round(p["qty"], 8),
+            "avg_price": round(avg, 4),
+            "cost_basis": round(p["cost"], 2),
+            "current_price": round(px_base, 4),
+            "current_value": round(value, 2),
+            "pnl": round(value - p["cost"], 2),
+            "pnl_pct": round((value / p["cost"] - 1.0), 6) if p["cost"] > 1e-12 else None,
+            "currency": base,
+        })
+    rows.sort(key=lambda r: -r["current_value"])
+    return {"as_of": as_of, "currency": base, "holdings": rows}

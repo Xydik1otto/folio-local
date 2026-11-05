@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import datetime as dt
 import io
 import urllib.request
 
@@ -63,3 +64,43 @@ def update_prices(conn, tickers: list[str]) -> dict[str, float | None]:
         store_price(conn, ticker, date, price, currency)
         results[ticker] = price
     return results
+
+
+def fetch_stooq_history(symbol: str, start: str | None = None,
+                        end: str | None = None) -> list[tuple[str, float]]:
+    """Full daily history (or a date range) from Stooq's CSV endpoint.
+
+    Raises OSError on network failure; returns [] when Stooq has no data.
+    """
+    url = STOOQ_URL.format(symbol=symbol)
+    if start or end:
+        d1 = (start or "1900-01-01").replace("-", "")
+        d2 = (end or dt.date.today().isoformat()).replace("-", "")
+        url += f"&d1={d1}&d2={d2}"
+    req = urllib.request.Request(url, headers={"User-Agent": "folio-local/0.1"})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        text = resp.read().decode("utf-8", "replace")
+    out = []
+    for row in csv.DictReader(io.StringIO(text)):
+        try:
+            out.append((row["Date"], float(row["Close"])))
+        except (KeyError, TypeError, ValueError):
+            continue
+    return out
+
+
+def backfill_prices(conn, ticker: str, start: str, end: str) -> dict:
+    """Store daily snapshots for `ticker` over [start, end]. Stooq only
+    (crypto range backfill needs a keyed source — not in scope)."""
+    import datetime as _dt
+    _dt.date.fromisoformat(start)
+    _dt.date.fromisoformat(end)
+    try:
+        quotes = fetch_stooq_history(ticker.lower(), start, end)
+    except OSError as e:
+        return {"ticker": ticker, "stored": 0, "error": f"fetch failed: {e}"}
+    from .db import store_price
+    for date, price in quotes:
+        store_price(conn, ticker.upper(), date, price, "USD")
+    return {"ticker": ticker.upper(), "start": start, "end": end,
+            "stored": len(quotes)}
